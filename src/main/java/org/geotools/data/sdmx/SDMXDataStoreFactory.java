@@ -32,8 +32,9 @@ import java.util.logging.Logger;
 import org.geotools.data.DataStore;
 import org.geotools.data.DataStoreFactorySpi;
 import org.geotools.data.Parameter;
-import org.geotools.util.SimpleInternationalString;
 import org.geotools.util.logging.Logging;
+
+import it.bancaditalia.oss.sdmx.exceptions.SdmxException;
 
 /**
  * Data store factory class
@@ -48,17 +49,18 @@ public class SDMXDataStoreFactory implements DataStoreFactorySpi {
       .getLogger(SDMXDataStoreFactory.class.getName());
 
   public static final String FACTORY_NAME = "SDMX";
-  public static final String FACTORY_DESCRIPTION = "SDMX 2.1 ReST API";
+  public static final String FACTORY_DESCRIPTION = "SDMX 2.0 SOAP API";
 
   private static List<Param> paramMetadata = new ArrayList<Param>(10);
 
-  public static final Param NAMESPACE_PARAM = new Param(
-      "namespace", String.class, "", true);
-  public static final Param URL_PARAM = new Param(
-      "Endpoint of the SDMX ReST API",
+  public static final Param NAMESPACE_PARAM = new Param("namespace",
       String.class, "", true);
-  public static final Param USER_PARAM = new Param(
-      "Username of the endpoint", String.class, "", false, null);
+  public static final Param NAME_PARAM = new Param("SDMX source well-known name", String.class, "",
+      true);
+  public static final Param URL_PARAM = new Param(
+      "Endpoint of the SDMX ReST API", String.class, "", true);
+  public static final Param USER_PARAM = new Param("Username of the endpoint",
+      String.class, "", false, null);
   public static final Param PASSWORD_PARAM = new Param(
       "Password associated with the username.", String.class, "", false, null,
       Collections.singletonMap(Parameter.IS_PASSWORD, Boolean.TRUE));
@@ -79,10 +81,15 @@ public class SDMXDataStoreFactory implements DataStoreFactorySpi {
   @Override
   public DataStore createDataStore(Map<String, Serializable> params)
       throws IOException {
-    return new SDMXDataStore((String) params.get(NAMESPACE_PARAM.key),
-        (String) params.get(URL_PARAM.key),
-        (String) params.get(USER_PARAM.key),
-        (String) params.get(PASSWORD_PARAM.key));
+    try {
+      return new SDMXDataStore((String) params.get(NAME_PARAM.key),
+          (String) params.get(NAMESPACE_PARAM.key),
+          (String) params.get(URL_PARAM.key), (String) params.get(USER_PARAM.key),
+          (String) params.get(PASSWORD_PARAM.key));
+    } catch (SdmxException e) {
+      // FIXME: re-packing an exception is not nice...
+      throw new IOException(e);
+    }
   }
 
   @Override
@@ -104,8 +111,7 @@ public class SDMXDataStoreFactory implements DataStoreFactorySpi {
   public boolean canProcess(Map<String, Serializable> params) {
 
     try {
-      new URL(
-          (String) params.get(SDMXDataStoreFactory.NAMESPACE_PARAM.key));
+      new URL((String) params.get(SDMXDataStoreFactory.NAMESPACE_PARAM.key));
       new URL((String) params.get(SDMXDataStoreFactory.URL_PARAM.key));
     } catch (MalformedURLException e) {
       return false;

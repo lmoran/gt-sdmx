@@ -1,1 +1,1 @@
-org.geotools.data.arcgisrest.ArcGISRestDataStoreFactory
+org.geotools.data.sdmx.SDMXDataStoreFactory

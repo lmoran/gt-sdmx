@@ -68,7 +68,7 @@ public class SDMXFeatureReader
    */
   @Override
   public boolean hasNext() {
-    return true;
+    return false;
 //    return this.parser.hasNext();
   }
 

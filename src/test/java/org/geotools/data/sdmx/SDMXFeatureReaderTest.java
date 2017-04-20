@@ -14,7 +14,7 @@
  *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *    Lesser General Public License for more details.
  */
-package org.geotools.data.arcgisrest;
+package org.geotools.data.sdmx;
 
 import static org.junit.Assert.*;
 
@@ -36,7 +36,7 @@ import com.vividsolutions.jts.geom.Geometry;
 
 import jdk.nashorn.internal.ir.annotations.Ignore;
 
-public class ArcGISRestFeatureReaderTest {
+public class SDMXFeatureReaderTest {
 
   private static final Logger LOGGER = Logging
       .getLogger("org.geotools.data.arcgisrest");
@@ -58,52 +58,15 @@ public class ArcGISRestFeatureReaderTest {
     this.fType = builder.buildFeatureType();
   }
 
-  @Test(expected = IOException.class)
-  public void emptyInputStreamHasNext() throws Exception {
-
-    this.reader = new SDMXFeatureReader(this.fType,
-        new ByteArrayInputStream("".getBytes()), this.LOGGER);
-    assertFalse(this.reader.hasNext());
-  }
-
   @Test
-  public void noFeaturesHasNext() throws Exception {
-
-    this.json = ArcGISRestDataStoreFactoryTest
-        .readJSONAsString("test-data/noFeatures.geo.json");
-    this.reader = new SDMXFeatureReader(this.fType,
-        new ByteArrayInputStream(json.getBytes()), this.LOGGER);
-
-    assertFalse(this.reader.hasNext());
-  }
-
-  @Test(expected = NoSuchElementException.class)
   public void noFeaturesNext() throws Exception {
-
-    this.json = ArcGISRestDataStoreFactoryTest
-        .readJSONAsString("test-data/noFeatures.geo.json");
+// TODO:
+    this.json = "aaaa";
+//        .readJSONAsString("test-data/noFeatures.geo.json");
     this.reader = new SDMXFeatureReader(this.fType,
         new ByteArrayInputStream(json.getBytes()), this.LOGGER);
 
     this.reader.next();
   }
 
-  @Test
-  public void noProperties() throws Exception {
-
-    this.json = ArcGISRestDataStoreFactoryTest
-        .readJSONAsString("test-data/noProperties.geo.json");
-    this.reader = new SDMXFeatureReader(this.fType,
-        new ByteArrayInputStream(json.getBytes()), this.LOGGER);
-
-    assertTrue(this.reader.hasNext());
-    SimpleFeature feat = this.reader.next();
-    assertTrue(this.reader.hasNext());
-    feat = this.reader.next();
-    assertTrue(this.reader.hasNext());
-    feat = this.reader.next();
-    assertFalse(this.reader.hasNext());
-    assertEquals("geometry",
-        feat.getDefaultGeometryProperty().getName().getLocalPart());
-  }
 }
