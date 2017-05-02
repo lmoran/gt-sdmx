@@ -17,56 +17,81 @@
 package org.geotools.data.sdmx;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.when;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.NoSuchElementException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.logging.Logger;
 
+import org.apache.commons.httpclient.HttpStatus;
+import org.geotools.data.Query;
 import org.geotools.data.sdmx.SDMXFeatureReader;
-import org.geotools.feature.FeatureIterator;
-import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.util.logging.Logging;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
-import com.vividsolutions.jts.geom.Geometry;
+import it.bancaditalia.oss.sdmx.client.RestSdmxClient;
 
-import jdk.nashorn.internal.ir.annotations.Ignore;
-
+@RunWith(PowerMockRunner.class)
+@PrepareForTest({ RestSdmxClient.class, HttpURLConnection.class, URL.class })
 public class SDMXFeatureReaderTest {
 
   private static final Logger LOGGER = Logging
       .getLogger("org.geotools.data.arcgisrest");
 
-  SDMXFeatureReader reader;
-  SimpleFeatureType fType;
-  String json;
-  
-  @Before
-  public void setUp() throws Exception {
-    SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
-    builder.setName("jsonfeature");
-    builder.add("vint", Integer.class);
-    builder.add("vfloat", Float.class);
-    builder.add("vstring", String.class);
-    builder.add("vboolean", Boolean.class);
-    builder.add("geometry", Geometry.class);
+  private SDMXDataStore dataStore;
+  private URL urlMock;
+  private HttpURLConnection clientMock;
 
-    this.fType = builder.buildFeatureType();
-  }
+  SDMXFeatureReader reader;
+  SDMXFeatureSource source;
+  SimpleFeatureType fType;
 
   @Test
   public void noFeaturesNext() throws Exception {
-// TODO:
-    this.json = "aaaa";
-//        .readJSONAsString("test-data/noFeatures.geo.json");
-    this.reader = new SDMXFeatureReader(this.fType,
-        new ByteArrayInputStream(json.getBytes()), this.LOGGER);
 
-    this.reader.next();
+    this.urlMock = PowerMockito.mock(URL.class);
+    this.clientMock = PowerMockito.mock(HttpURLConnection.class);
+
+    PowerMockito.whenNew(URL.class).withAnyArguments().thenReturn(this.urlMock);
+    PowerMockito.when(this.urlMock.openConnection())
+        .thenReturn(this.clientMock);
+    when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK);
+    when(clientMock.getInputStream())
+        .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
+        .thenReturn(
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/query-t04.xml"));
+
+    this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
+    this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
+    this.source = (SDMXFeatureSource) this.dataStore
+        .getFeatureSource(Helper.T04);
+
+    this.source.buildFeatureType();
+    this.reader = (SDMXFeatureReader) this.source.getReader(Query.ALL);
+
+    SimpleFeature feat = this.reader.next();
+    assertNull(feat.getAttribute(0));
   }
 
+  /*
+   * TODO SDMX returns 404
+   * 
+   * @Test public void noFeatures() throws Exception {
+   * this.source.buildFeatureType(); this.reader = (SDMXFeatureReader)
+   * this.source.getReader(Query.ALL);
+   * 
+   * SimpleFeature feat = this.reader.next(); assertNull(feat.getAttribute(0));
+   * }
+   */
 }

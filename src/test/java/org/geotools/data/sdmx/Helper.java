@@ -14,10 +14,14 @@ import org.geotools.data.DataStore;
 public class Helper {
 
 //  public static String URL = "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetDataStructure/ABS_SEIFA_LGA";
-  public static String URL = "http://stat.data.abs.gov.au/sdmx-json/data";
+  public static String URL = "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetDataStructure/ALL/ABS";
   public static String NAMESPACE = "http://aurin.org.au";
   public static String USER = "testuser";
   public static String PASSWORD = "testpassword";
+
+  public static String T04 = "ABS_CENSUS2011_T04";
+  public static String SEIFA_LGA = "ABS_SEIFA_LGA";
+
 
   public Helper() {
     // TODO Auto-generated constructor stub

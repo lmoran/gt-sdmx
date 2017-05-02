@@ -1,0 +1,57 @@
+﻿<message:MessageGroup
+  xmlns="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/generic"
+  xmlns:common="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/common"
+  xsi:schemaLocation="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/generic http://www.sdmx.org/docs/2_0/SDMXGenericData.xsd http://www.SDMX.org/resources/SDMXML/schemas/v2_0/message http://www.sdmx.org/docs/2_0/SDMXMessage.xsd"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:message="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/message">
+  <Header xmlns="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/message">
+    <ID>none</ID>
+    <Test>false</Test>
+    <Truncated>false</Truncated>
+    <Prepared>2017-05-02T06:19:34</Prepared>
+    <Sender id="ABS">
+      <Name xml:lang="en">Australian Bureau of Statistics</Name>
+      <Name xml:lang="fr">Australian Bureau of Statistics</Name>
+    </Sender>
+  </Header>
+  <DataSet
+    keyFamilyURI="http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetKeyFamily/ABS_CENSUS2011_T04">
+    <KeyFamilyRef>ABS_CENSUS2011_T04</KeyFamilyRef>
+    <Series>
+      <SeriesKey>
+        <Value concept="MEASURE" value="3" />
+        <Value concept="MSTP" value="TOT" />
+        <Value concept="AGE" value="TOT" />
+        <Value concept="STATE" value="0" />
+        <Value concept="REGIONTYPE" value="AUS" />
+        <Value concept="REGION" value="0" />
+        <Value concept="FREQUENCY" value="A" />
+      </SeriesKey>
+      <Attributes>
+        <Value concept="TIME_FORMAT" value="P1Y" />
+      </Attributes>
+      <Obs>
+        <Time>2001</Time>
+        <ObsValue value="15038339" />
+      </Obs>
+      <Obs>
+        <Time>2006</Time>
+        <ObsValue value="16103825" />
+      </Obs>
+      <Obs>
+        <Time>2011</Time>
+        <ObsValue value="17565158" />
+      </Obs>
+    </Series>
+    <Annotations>
+      <common:Annotation
+        xmlns:common="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/common">
+        <common:AnnotationTitle>Statistical usage warning
+        </common:AnnotationTitle>
+        <common:AnnotationText>ABS.Stat beta is continuing to be
+          developed. Data will be updated as soon as possible following
+          its 11:30 am release on the ABS website.
+        </common:AnnotationText>
+      </common:Annotation>
+    </Annotations>
+  </DataSet>
+</message:MessageGroup>

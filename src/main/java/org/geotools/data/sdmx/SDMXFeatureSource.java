@@ -22,15 +22,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.StringJoiner;
 import java.util.logging.Level;
-
-import javax.xml.ws.http.HTTPException;
 
 import org.geotools.data.DefaultResourceInfo;
 import org.geotools.data.FeatureReader;
@@ -43,12 +36,16 @@ import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
 import org.geotools.util.SimpleInternationalString;
+
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.feature.type.AttributeDescriptor;
 import org.opengis.feature.type.Name;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+
+import it.bancaditalia.oss.sdmx.api.DataFlowStructure;
+import it.bancaditalia.oss.sdmx.api.Dataflow;
+import it.bancaditalia.oss.sdmx.api.PortableDataSet;
 
 /**
  * Source of features for the ArcGIS ReST API
@@ -58,37 +55,28 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem;
  */
 public class SDMXFeatureSource extends ContentFeatureSource {
 
-  // FIXME: Are we user ArcGIS ReST API always uses this for the "spatial"
-  // property?
-  protected static CoordinateReferenceSystem SPATIALCRS;
+  // FIXME:
+  protected CoordinateReferenceSystem crs;
 
   protected SDMXDataStore dataStore;
   protected DefaultResourceInfo resInfo;
-  protected String objectIdField;
+  protected Dataflow dataflow;
+  protected DataFlowStructure dataflowStructure;
 
-  public SDMXFeatureSource(ContentEntry entry, Query query)
-      throws IOException {
+  public SDMXFeatureSource(ContentEntry entry, Dataflow dataflowIn, Query query)
+      throws IOException, FactoryException {
 
     super(entry, query);
     this.dataStore = (SDMXDataStore) entry.getDataStore();
+    this.dataflow = dataflowIn;
+
+    // FIXME: 4326 only for now
+    this.crs = CRS.parseWKT(
+        "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.01745329251994328,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"EPSG\",\"4326\"]]");
   }
 
   @Override
   protected SimpleFeatureType buildFeatureType() throws IOException {
-
-    // Extracts informaton about the type name (as per this.entry) from the API
-    /*
-    Dataset ds = this.dataStore.getDataset(this.entry.getName());
-    Webservice ws = (new Gson())
-        .fromJson(
-            SDMXDataStore.InputStreamToString(this.dataStore.retrieveJSON(
-                "GET", new URL(ds.getWebService().toString()),
-                SDMXDataStore.DEFAULT_PARAMS)),
-            Webservice.class);
-
-    if (ws == null) {
-      throw new IOException("Type name " + entry.getName() + " not found");
-    }
 
     // Sets the information about the resource
     this.resInfo = new DefaultResourceInfo();
@@ -99,28 +87,19 @@ public class SDMXFeatureSource extends ContentFeatureSource {
       // Re-packages the exception to be compatible with method signature
       throw new IOException(e.getMessage(), e.fillInStackTrace());
     }
-    try {
-      this.resInfo.setCRS(CRS.decode(
-          "EPSG:" + ws.getExtent().getSpatialReference().getLatestWkid()));
-    } catch (FactoryException e) {
-      // FIXME: this is not nice: exceptions should not be re-packaged
-      throw new IOException(e.getMessage());
-    }
 
-    this.resInfo.setKeywords(new HashSet(ds.getKeyword()));
+    this.resInfo.setCRS(this.crs);
+    this.resInfo.setKeywords(new HashSet());
 
     // FIXME: the abstract of the feature type is not set
-    this.resInfo.setDescription(ds.getDescription());
+    this.resInfo.setDescription(this.dataflow.getDescription());
 
-    this.resInfo.setTitle(ds.getTitle() != null ? ds.getTitle() : ws.getName());
-    this.resInfo.setName(ws.getName());
-    ReferencedEnvelope geoBbox = new ReferencedEnvelope(
-        ws.getExtent().getXmin(), ws.getExtent().getXmax(),
-        ws.getExtent().getYmin(), ws.getExtent().getYmax(),
+    this.resInfo.setTitle(this.dataflow.getName());
+    this.resInfo.setName(this.dataflow.getId());
+    this.resInfo.setCRS(this.crs);
+    ReferencedEnvelope geoBbox = new ReferencedEnvelope(-180, 180, -90, 90,
         this.resInfo.getCRS());
     this.resInfo.setBounds(geoBbox);
-    this.objectIdField = (ws.getObjectIdField() != null) ? ws.getObjectIdField()
-        : ws.getGlobalIdField();
 
     // Builds the feature type
     SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
@@ -129,31 +108,39 @@ public class SDMXFeatureSource extends ContentFeatureSource {
                                            // not set
     builder.setName(this.entry.getName());
     // FIXME: the abstract of the feature type is not set
-    builder.setDescription(ds.getDescription() != null
-        ? new SimpleInternationalString(ds.getDescription()) : null);
+    builder.setDescription(
+        new SimpleInternationalString(this.resInfo.getDescription()));
 
-    // Adds non-geometry field descriptions
-    ws.getFields().forEach((fld) -> {
-      Class clazz = EsriJavaMapping.get(fld.getType());
-      if (clazz == null) {
-        this.getDataStore().getLogger()
-            .severe("Type " + fld.getType() + " not found");
+    this.dataflowStructure = this.dataStore
+        .getDataFlowStructure(this.entry.getName().getLocalPart());
+
+    this.dataflowStructure.getDimensions().forEach(dim -> {
+      if (SDMXDataStore.MEASURE_KEY.equals(dim.getId().toUpperCase())) {
+        dim.getCodeList().getCodes().entrySet().forEach(entry -> {
+          builder.add(entry.getKey(), java.lang.Double.class);
+        });
+      } else {
+        builder.add(dim.getId(), java.lang.String.class);
       }
-      builder.add(fld.getName(), clazz);
     });
 
-    // Adds the geometry field
-    Class clazz = EsriJTSMapping.get(ws.getGeometryType());
-    if (clazz == null) {
-      this.getDataStore().getLogger()
-          .severe("Geometry type " + ws.getGeometryType() + " not found");
-    }
-
-    builder.add(SDMXDataStore.GEOMETRY_ATTR, clazz);
+    /*
+     * DIMENSION: dimId: LGA_2011 dimName: Local Government Areas - 2011
+     * dimCLId: CL_ABS_SEIFA_LGA_LGA_2011 dimCLFullId:
+     * ABS/CL_ABS_SEIFA_LGA_LGA_2011 DIMENSION: dimId: INDEX_TYPE dimName: Index
+     * Type dimCLId: CL_ABS_SEIFA_LGA_INDEX_TYPE dimCLFullId:
+     * ABS/CL_ABS_SEIFA_LGA_INDEX_TYPE DIMENSION: dimId: MEASURE dimName:
+     * Measure dimCLId: CL_ABS_SEIFA_LGA_MEASURE dimCLFullId:
+     * ABS/CL_ABS_SEIFA_LGA_MEASURE
+     */
 
     this.schema = builder.buildFeatureType();
-    this.schema.getUserData().put("serviceUrl", ds.getWebService());
-*/
+
+    // XXX
+    this.schema.getAttributeDescriptors().forEach(descr -> {
+      System.out
+          .println(descr.getLocalName() + " " + descr.getType().toString());
+    });
     return this.schema;
   }
 
@@ -189,26 +176,20 @@ public class SDMXFeatureSource extends ContentFeatureSource {
 
   @Override
   protected int getCountInternal(Query query) throws IOException {
-/*
-    Count cnt;
-    Map<String, Object> params = new HashMap<String, Object>(
-        SDMXDataStore.DEFAULT_PARAMS);
-    params.put(SDMXDataStore.COUNT_PARAM, true);
-    params.put(SDMXDataStore.GEOMETRY_PARAM,
-        this.composeExtent(this.getBoundsInternal(query)));
-
-    try {
-      cnt = (new Gson()).fromJson(
-          SDMXDataStore.InputStreamToString(this.dataStore
-              .retrieveJSON("POST", (new URL(this.composeQueryURL())), params)),
-          Count.class);
-    } catch (HTTPException e) {
-      throw new IOException(
-          "Error " + e.getStatusCode() + " " + e.getMessage());
-    }
-
-    return cnt == null ? -1 : cnt.getCount();
-*/
+    /*
+     * Count cnt; Map<String, Object> params = new HashMap<String, Object>(
+     * SDMXDataStore.DEFAULT_PARAMS); params.put(SDMXDataStore.COUNT_PARAM,
+     * true); params.put(SDMXDataStore.GEOMETRY_PARAM,
+     * this.composeExtent(this.getBoundsInternal(query)));
+     * 
+     * try { cnt = (new Gson()).fromJson(
+     * SDMXDataStore.InputStreamToString(this.dataStore .retrieveJSON("POST",
+     * (new URL(this.composeQueryURL())), params)), Count.class); } catch
+     * (HTTPException e) { throw new IOException( "Error " + e.getStatusCode() +
+     * " " + e.getMessage()); }
+     * 
+     * return cnt == null ? -1 : cnt.getCount();
+     */
     return 1; // XXX
   }
 
@@ -216,66 +197,8 @@ public class SDMXFeatureSource extends ContentFeatureSource {
   protected FeatureReader<SimpleFeatureType, SimpleFeature> getReaderInternal(
       Query query) throws IOException {
 
-    InputStream result;
-
-    // TBD
-    
-    // Returns a reader for the result
-//    return new SDMXFeatureReader(this.schema, result,
-//        this.dataStore.getLogger());
-    return null;
-  }
-
-  /**
-   * Helper method to return an attribute list as the API expects it
-   * 
-   * @param query
-   *          Query to build the attributes for
-   */
-  protected String composeAttributes(Query query) {
-
-    StringJoiner joiner = new StringJoiner(",");
-
-    // The Object ID is always in to ensure the GeoJSON is correctly processed
-    // by the parser,
-    // For instance, when the GeoJSON properties is null (i.e., only the
-    // geometry is
-    // returned), WMS GetMap requests return an empty image
-    joiner.add(this.objectIdField);
-
-    if (query.retrieveAllProperties()) {
-      Iterator<AttributeDescriptor> iter = this.schema.getAttributeDescriptors()
-          .iterator();
-      while (iter.hasNext()) {
-        AttributeDescriptor attr = iter.next();
-        // Skips ID and geometry field
-        if (!attr.getLocalName().equalsIgnoreCase(this.objectIdField)
-            && !attr.getLocalName().equalsIgnoreCase(
-                this.schema.getGeometryDescriptor().getLocalName())) {
-          joiner.add(iter.next().getLocalName());
-        }
-      }
-    } else {
-      for (String attr : query.getPropertyNames()) {
-        // Skips ID and geometry field
-        if (!attr.equalsIgnoreCase(this.objectIdField)
-            && !attr.equalsIgnoreCase(
-                this.schema.getGeometryDescriptor().getLocalName())) {
-          joiner.add(attr);
-        }
-      }
-    }
-
-    return joiner.toString();
-  }
-
-  /**
-   * Compose the query URL of the instance's dataset
-   * 
-   * @return query URL
-   */
-  protected String composeQueryURL() {
-    return this.schema.getUserData().get("serviceUrl") + "/query";
+    return new SDMXFeatureReader(this.dataStore.getSDMXClient(), this.schema, this.dataflow,
+        this.dataflowStructure, query, this.dataStore.getLogger());
   }
 
 }

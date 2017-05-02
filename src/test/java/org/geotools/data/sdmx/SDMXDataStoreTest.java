@@ -18,56 +18,33 @@ package org.geotools.data.sdmx;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 
-import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.commons.httpclient.methods.PostMethod;
-import org.geotools.data.FeatureSource;
-import org.geotools.data.Query;
 import org.geotools.data.sdmx.SDMXDataStore;
-import org.geotools.data.sdmx.SDMXDataStoreFactoryTest;
-import org.geotools.data.sdmx.SDMXDataStore;
-import org.geotools.data.sdmx.SDMXFeatureSource;
-import org.geotools.feature.FeatureCollection;
-import org.geotools.feature.FeatureIterator;
 import org.geotools.feature.NameImpl;
-import org.geotools.referencing.CRS;
-import org.geotools.util.UnsupportedImplementationException;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.opengis.feature.simple.SimpleFeature;
-import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.Name;
-import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.URL;
 
-import org.geotools.util.UnsupportedImplementationException;
+import it.bancaditalia.oss.sdmx.client.RestSdmxClient;
 
 import org.powermock.modules.junit4.PowerMockRunner;
-
-import com.vividsolutions.jts.geom.Geometry;
-
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ SDMXDataStore.class, HttpURLConnection.class })
+@PrepareForTest({ RestSdmxClient.class, HttpURLConnection.class, URL.class })
 public class SDMXDataStoreTest {
 
-  public static String TYPENAME1 = "FERTILITY_AGE_STATE";
-  public static String TYPENAME2 = "ATSI_FERTILITY";
-  public static String TYPENAME3 = "ABS_ABORIGINAL_POPPROJ_INDREGION";
-
   private SDMXDataStore dataStore;
-
+  private URL urlMock;
   private HttpURLConnection clientMock;
 
   @Before
@@ -79,26 +56,58 @@ public class SDMXDataStoreTest {
   }
 
   @Test
-  public void test() throws Exception {
+  public void testTypeName() throws Exception {
 
+    this.urlMock = PowerMockito.mock(URL.class);
     this.clientMock = PowerMockito.mock(HttpURLConnection.class);
-    when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK);
+
+    PowerMockito.whenNew(URL.class).withAnyArguments().thenReturn(this.urlMock);
+    PowerMockito.when(this.urlMock.openConnection())
+        .thenReturn(this.clientMock);
+    when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK);
     when(clientMock.getInputStream())
-    .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"));
-    when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK);
-    when(clientMock.getInputStream())
-    .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"));
+        .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
+        .thenReturn(
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"));
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     List<Name> names = this.dataStore.createTypeNames();
 
-    assertEquals(304, names.size());
-    assertEquals(TYPENAME1, names.get(0).getLocalPart());
+    assertEquals(2, names.size());
+    assertEquals(Helper.T04, names.get(0).getLocalPart());
     assertEquals(Helper.NAMESPACE, names.get(0).getNamespaceURI());
-
     assertNotNull(
-        this.dataStore.getEntry(new NameImpl(Helper.NAMESPACE, TYPENAME1)));
-
-    assertTrue(true);
+        this.dataStore.getEntry(new NameImpl(Helper.NAMESPACE, Helper.T04)));
+    assertEquals(Helper.SEIFA_LGA, names.get(1).getLocalPart());
+    assertNotNull(
+        this.dataStore.getEntry(new NameImpl(Helper.NAMESPACE, Helper.SEIFA_LGA)));
   }
+
+  @Test
+  public void testSchema() throws Exception {
+
+    this.urlMock = PowerMockito.mock(URL.class);
+    this.clientMock = PowerMockito.mock(HttpURLConnection.class);
+
+    PowerMockito.whenNew(URL.class).withAnyArguments().thenReturn(this.urlMock);
+    PowerMockito.when(this.urlMock.openConnection())
+        .thenReturn(this.clientMock);
+    when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK);
+    when(clientMock.getInputStream())
+        .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
+        .thenReturn(
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"));
+
+    this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
+    assertEquals(2, this.dataStore.createTypeNames().size());
+
+    assertNotNull(this.dataStore.getFeatureSource(Helper.T04).getSchema());
+    assertEquals(14, this.dataStore.getFeatureSource(Helper.T04).getSchema()
+        .getAttributeCount());
+  }
+
 }

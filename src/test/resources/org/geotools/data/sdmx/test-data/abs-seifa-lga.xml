@@ -1,8 +1,5 @@
-<message:Structure
-  xmlns="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/structure"
-  xmlns:common="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/common"
-  xsi:schemaLocation="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/structure http://www.sdmx.org/docs/2_0/SDMXStructure.xsd http://www.SDMX.org/resources/SDMXML/schemas/v2_0/message http://www.sdmx.org/docs/2_0/SDMXMessage.xsd"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:message="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/message">
+<?xml version="1.0"?>
+<message:Structure xmlns="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/structure" xmlns:common="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:message="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/message" xsi:schemaLocation="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/structure http://www.sdmx.org/docs/2_0/SDMXStructure.xsd http://www.SDMX.org/resources/SDMXML/schemas/v2_0/message http://www.sdmx.org/docs/2_0/SDMXMessage.xsd">
   <Header xmlns="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/message">
     <ID>
       none<!--Statistical usage warning ABS.Stat beta is continuing to be 
@@ -2538,23 +2535,15 @@
       <Name xml:lang="en">SEIFA by Local Government Area (LGA)</Name>
       <Name xml:lang="fr">SEIFA by Local Government Area (LGA)</Name>
       <Components>
-        <Dimension codelist="CL_ABS_SEIFA_LGA_LGA_2011"
-          conceptRef="LGA_2011" />
-        <Dimension codelist="CL_ABS_SEIFA_LGA_INDEX_TYPE"
-          conceptRef="INDEX_TYPE" />
-        <Dimension codelist="CL_ABS_SEIFA_LGA_MEASURE"
-          conceptRef="MEASURE" isMeasureDimension="true" />
-        <TimeDimension codelist="CL_ABS_SEIFA_LGA_TIME"
-          conceptRef="TIME" />
+        <Dimension codelist="CL_ABS_SEIFA_LGA_LGA_2011" conceptRef="LGA_2011"/>
+        <Dimension codelist="CL_ABS_SEIFA_LGA_INDEX_TYPE" conceptRef="INDEX_TYPE"/>
+        <Dimension codelist="CL_ABS_SEIFA_LGA_MEASURE" conceptRef="MEASURE" isMeasureDimension="true"/>
+        <TimeDimension codelist="CL_ABS_SEIFA_LGA_TIME" conceptRef="TIME"/>
         <PrimaryMeasure conceptRef="OBS_VALUE">
-          <TextFormat textType="Double" />
+          <TextFormat textType="Double"/>
         </PrimaryMeasure>
-        <Attribute codelist="CL_ABS_SEIFA_LGA_OBS_STATUS"
-          conceptRef="OBS_STATUS" assignmentStatus="Conditional"
-          attachmentLevel="Observation" />
-        <Attribute codelist="CL_ABS_SEIFA_LGA_TIME_FORMAT"
-          conceptRef="TIME_FORMAT" assignmentStatus="Conditional"
-          attachmentLevel="Series" isTimeFormat="true" />
+        <Attribute codelist="CL_ABS_SEIFA_LGA_OBS_STATUS" conceptRef="OBS_STATUS" assignmentStatus="Conditional" attachmentLevel="Observation"/>
+        <Attribute codelist="CL_ABS_SEIFA_LGA_TIME_FORMAT" conceptRef="TIME_FORMAT" assignmentStatus="Conditional" attachmentLevel="Series" isTimeFormat="true"/>
       </Components>
     </KeyFamily>
   </message:KeyFamilies>
