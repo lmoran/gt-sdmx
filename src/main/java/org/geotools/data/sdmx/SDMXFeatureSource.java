@@ -46,6 +46,8 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import it.bancaditalia.oss.sdmx.api.DataFlowStructure;
 import it.bancaditalia.oss.sdmx.api.Dataflow;
 import it.bancaditalia.oss.sdmx.api.PortableDataSet;
+import it.bancaditalia.oss.sdmx.exceptions.SdmxException;
+import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
 
 /**
  * Source of features for the ArcGIS ReST API
@@ -197,8 +199,9 @@ public class SDMXFeatureSource extends ContentFeatureSource {
   protected FeatureReader<SimpleFeatureType, SimpleFeature> getReaderInternal(
       Query query) throws IOException {
 
-    return new SDMXFeatureReader(this.dataStore.getSDMXClient(), this.schema, this.dataflow,
-        this.dataflowStructure, query, this.dataStore.getLogger());
+    return new SDMXFeatureReader(this.dataStore.getSDMXClient(), this.schema,
+        this.dataflow, this.dataflowStructure, query,
+        this.dataStore.getLogger());
   }
 
 }

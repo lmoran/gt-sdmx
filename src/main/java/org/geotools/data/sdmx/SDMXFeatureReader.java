@@ -41,6 +41,7 @@ import it.bancaditalia.oss.sdmx.api.PortableDataSet;
 import it.bancaditalia.oss.sdmx.api.PortableTimeSeries;
 import it.bancaditalia.oss.sdmx.client.SdmxClientHandler;
 import it.bancaditalia.oss.sdmx.exceptions.SdmxException;
+import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
 
 /**
  * Feature reader of SDMX tuples
@@ -57,7 +58,7 @@ public class SDMXFeatureReader
   protected Dataflow dataflow;
   protected DataFlowStructure dfStructure;
   protected Iterator<PortableTimeSeries> tsIter;
-
+  protected boolean empty;
   protected int featIndex = 0;
 
   public SDMXFeatureReader(GenericSDMXClient clientIn,
@@ -70,15 +71,16 @@ public class SDMXFeatureReader
     this.client = clientIn;
     this.dataflow = dataflowIn;
     this.dfStructure = dfStructureIn;
-
+    this.empty = false;
+    
     // TODO
     if (Query.ALL.equals(queryIn)) {
       ArrayList<String> constraints = new ArrayList<String>(
           this.dfStructure.getDimensions().size());
       this.dfStructure.getDimensions().forEach(dim -> {
-        String code= dim.getCodeList().getCodes().keySet().iterator().next();
+        String code = dim.getCodeList().getCodes().keySet().iterator().next();
         constraints.add(code);
-//        constraints.add(SDMXDataStore.ALLCODES_EXP);
+        // constraints.add(SDMXDataStore.ALLCODES_EXP);
       });
 
       try {
@@ -86,8 +88,13 @@ public class SDMXFeatureReader
             String.join(SDMXDataStore.SEPARATOR_EXP, constraints), null, null,
             false, null, false).iterator();
       } catch (SdmxException e) {
-        logger.log(Level.SEVERE, e.getMessage(), e);
-        throw new IOException(e);
+        if (e instanceof SdmxResponseException
+            && ((SdmxResponseException) e).getResponseCode() == SDMXDataStore.ERROR_NORESULTS) {
+          this.empty= true;
+        } else {
+          logger.log(Level.SEVERE, e.getMessage(), e);
+          throw new IOException(e);
+        }
       }
     }
 
@@ -110,6 +117,11 @@ public class SDMXFeatureReader
    */
   @Override
   public boolean hasNext() {
+    
+    if (this.empty == true) {
+      return false;
+    }
+    
     return this.tsIter.hasNext();
   }
 
@@ -119,6 +131,10 @@ public class SDMXFeatureReader
    */
   @Override
   public SimpleFeature next() throws NoSuchElementException, IOException {
+    
+    if (this.empty == true) {
+      return null;
+    }
 
     // TODO
     List<Object> values = new ArrayList();

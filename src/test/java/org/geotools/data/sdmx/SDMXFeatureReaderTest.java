@@ -19,6 +19,8 @@ package org.geotools.data.sdmx;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.logging.Logger;
@@ -80,18 +82,40 @@ public class SDMXFeatureReaderTest {
     this.source.buildFeatureType();
     this.reader = (SDMXFeatureReader) this.source.getReader(Query.ALL);
 
+    assertTrue(this.reader.hasNext());
     SimpleFeature feat = this.reader.next();
     assertNull(feat.getAttribute(0));
   }
 
-  /*
-   * TODO SDMX returns 404
-   * 
-   * @Test public void noFeatures() throws Exception {
-   * this.source.buildFeatureType(); this.reader = (SDMXFeatureReader)
-   * this.source.getReader(Query.ALL);
-   * 
-   * SimpleFeature feat = this.reader.next(); assertNull(feat.getAttribute(0));
-   * }
-   */
+  @Test
+  public void noFeatures() throws Exception {
+    
+    this.urlMock = PowerMockito.mock(URL.class);
+    this.clientMock = PowerMockito.mock(HttpURLConnection.class);
+
+    PowerMockito.whenNew(URL.class).withAnyArguments().thenReturn(this.urlMock);
+    PowerMockito.when(this.urlMock.openConnection())
+        .thenReturn(this.clientMock);
+    when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_NOT_FOUND);
+    when(clientMock.getInputStream())
+        .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
+        .thenReturn(
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
+        .thenReturn(new ByteArrayInputStream("".getBytes()));
+
+    this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
+    this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
+    this.source = (SDMXFeatureSource) this.dataStore
+        .getFeatureSource(Helper.T04);
+
+    this.source.buildFeatureType();
+    this.reader = (SDMXFeatureReader) this.source.getReader(Query.ALL);
+
+    assertFalse(this.reader.hasNext());
+    assertNull(this.reader.next());
+  }
+
 }

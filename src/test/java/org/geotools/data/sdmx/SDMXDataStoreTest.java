@@ -68,9 +68,9 @@ public class SDMXDataStoreTest {
         .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK);
     when(clientMock.getInputStream())
         .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
-        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
         .thenReturn(
-            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"));
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"));
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     List<Name> names = this.dataStore.createTypeNames();
@@ -81,8 +81,8 @@ public class SDMXDataStoreTest {
     assertNotNull(
         this.dataStore.getEntry(new NameImpl(Helper.NAMESPACE, Helper.T04)));
     assertEquals(Helper.SEIFA_LGA, names.get(1).getLocalPart());
-    assertNotNull(
-        this.dataStore.getEntry(new NameImpl(Helper.NAMESPACE, Helper.SEIFA_LGA)));
+    assertNotNull(this.dataStore
+        .getEntry(new NameImpl(Helper.NAMESPACE, Helper.SEIFA_LGA)));
   }
 
   @Test
@@ -98,15 +98,18 @@ public class SDMXDataStoreTest {
         .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK);
     when(clientMock.getInputStream())
         .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
-        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
         .thenReturn(
-            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"));
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"));
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     assertEquals(2, this.dataStore.createTypeNames().size());
 
     assertNotNull(this.dataStore.getFeatureSource(Helper.T04).getSchema());
-    assertEquals(14, this.dataStore.getFeatureSource(Helper.T04).getSchema()
+    assertEquals(9, this.dataStore.getFeatureSource(Helper.T04).getSchema()
+        .getAttributeCount());
+    assertNotNull(this.dataStore.getFeatureSource(Helper.SEIFA_LGA).getSchema());
+    assertEquals(14, this.dataStore.getFeatureSource(Helper.SEIFA_LGA).getSchema()
         .getAttributeCount());
   }
 

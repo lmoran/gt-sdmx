@@ -50,13 +50,16 @@ import org.geotools.feature.NameImpl;
  */
 public class SDMXDataStore extends ContentDataStore {
 
-  // SDMX constants
+  // SDMX query constants
   public static String MEASURE_KEY = "MEASURE";
   public static String REGION_KEY = "REGION";
   public static String ALLCODES_EXP = "*";
   public static String OR_EXP = "+";
   public static String SEPARATOR_EXP = ".";
 
+  // SDMX error codes
+  public static int ERROR_NORESULTS= 100;
+  
   // Cache of feature sources
   protected Map<Name, SDMXFeatureSource> featureSources = new HashMap<Name, SDMXFeatureSource>();
 
