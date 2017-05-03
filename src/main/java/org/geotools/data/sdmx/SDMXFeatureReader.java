@@ -28,7 +28,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.geotools.data.FeatureReader;
-import org.geotools.data.Query;
 import org.geotools.feature.simple.SimpleFeatureImpl;
 import org.geotools.filter.identity.FeatureIdImpl;
 import org.opengis.feature.simple.SimpleFeature;
@@ -55,49 +54,34 @@ public class SDMXFeatureReader
   protected SimpleFeatureType featureType;
   protected Logger LOGGER;
   protected GenericSDMXClient client;
-  protected Dataflow dataflow;
-  protected DataFlowStructure dfStructure;
   protected Iterator<PortableTimeSeries> tsIter;
   protected boolean empty;
   protected int featIndex = 0;
 
   public SDMXFeatureReader(GenericSDMXClient clientIn,
       SimpleFeatureType featureTypeIn, Dataflow dataflowIn,
-      DataFlowStructure dfStructureIn, Query queryIn, Logger logger)
+      DataFlowStructure dfStructureIn, String sdmxConstraints, Logger logger)
       throws IOException {
+
     this.featureType = featureTypeIn;
     this.featIndex = 0;
     this.LOGGER = logger;
     this.client = clientIn;
-    this.dataflow = dataflowIn;
-    this.dfStructure = dfStructureIn;
     this.empty = false;
-    
-    // TODO
-    if (Query.ALL.equals(queryIn)) {
-      ArrayList<String> constraints = new ArrayList<String>(
-          this.dfStructure.getDimensions().size());
-      this.dfStructure.getDimensions().forEach(dim -> {
-        String code = dim.getCodeList().getCodes().keySet().iterator().next();
-        constraints.add(code);
-        // constraints.add(SDMXDataStore.ALLCODES_EXP);
-      });
 
-      try {
-        this.tsIter = this.client.getTimeSeries(dataflowIn, dfStructureIn,
-            String.join(SDMXDataStore.SEPARATOR_EXP, constraints), null, null,
-            false, null, false).iterator();
-      } catch (SdmxException e) {
-        if (e instanceof SdmxResponseException
-            && ((SdmxResponseException) e).getResponseCode() == SDMXDataStore.ERROR_NORESULTS) {
-          this.empty= true;
-        } else {
-          logger.log(Level.SEVERE, e.getMessage(), e);
-          throw new IOException(e);
-        }
+    try {
+      this.tsIter = this.client.getTimeSeries(dataflowIn, dfStructureIn,
+          sdmxConstraints, null, null,
+          false, null, false).iterator();
+    } catch (SdmxException e) {
+      if (e instanceof SdmxResponseException && ((SdmxResponseException) e)
+          .getResponseCode() == SDMXDataStore.ERROR_NORESULTS) {
+        this.empty = true;
+      } else {
+        logger.log(Level.SEVERE, e.getMessage(), e);
+        throw new IOException(e);
       }
     }
-
   }
 
   /**
@@ -117,11 +101,11 @@ public class SDMXFeatureReader
    */
   @Override
   public boolean hasNext() {
-    
+
     if (this.empty == true) {
       return false;
     }
-    
+
     return this.tsIter.hasNext();
   }
 
@@ -131,7 +115,7 @@ public class SDMXFeatureReader
    */
   @Override
   public SimpleFeature next() throws NoSuchElementException, IOException {
-    
+
     if (this.empty == true) {
       return null;
     }

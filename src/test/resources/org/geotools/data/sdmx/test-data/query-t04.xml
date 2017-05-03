@@ -1,4 +1,5 @@
-﻿<message:MessageGroup
+﻿<?xml version="1.0"?>
+<message:MessageGroup
   xmlns="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/generic"
   xmlns:common="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/common"
   xsi:schemaLocation="http://www.SDMX.org/resources/SDMXML/schemas/v2_0/generic http://www.sdmx.org/docs/2_0/SDMXGenericData.xsd http://www.SDMX.org/resources/SDMXML/schemas/v2_0/message http://www.sdmx.org/docs/2_0/SDMXMessage.xsd"
@@ -7,7 +8,7 @@
     <ID>none</ID>
     <Test>false</Test>
     <Truncated>false</Truncated>
-    <Prepared>2017-05-02T06:19:34</Prepared>
+    <Prepared>2017-05-03T01:23:04</Prepared>
     <Sender id="ABS">
       <Name xml:lang="en">Australian Bureau of Statistics</Name>
       <Name xml:lang="fr">Australian Bureau of Statistics</Name>

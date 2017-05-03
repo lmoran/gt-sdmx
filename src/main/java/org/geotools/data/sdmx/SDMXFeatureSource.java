@@ -22,7 +22,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.logging.Level;
 
 import org.geotools.data.DefaultResourceInfo;
@@ -33,6 +36,9 @@ import org.geotools.data.store.ContentDataStore;
 import org.geotools.data.store.ContentEntry;
 import org.geotools.data.store.ContentFeatureSource;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
+import org.geotools.filter.IsEqualsToImpl;
+import org.geotools.filter.text.cql2.CQL;
+import org.geotools.filter.visitor.DefaultFilterVisitor;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
 import org.geotools.util.SimpleInternationalString;
@@ -40,6 +46,12 @@ import org.geotools.util.SimpleInternationalString;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.Name;
+import org.opengis.filter.And;
+import org.opengis.filter.BinaryComparisonOperator;
+import org.opengis.filter.BinaryLogicOperator;
+import org.opengis.filter.FilterVisitor;
+import org.opengis.filter.PropertyIsEqualTo;
+import org.opengis.filter.expression.PropertyName;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
@@ -65,6 +77,15 @@ public class SDMXFeatureSource extends ContentFeatureSource {
   protected Dataflow dataflow;
   protected DataFlowStructure dataflowStructure;
 
+  protected final class FindDimensions extends DefaultFilterVisitor {
+    public Object visit(PropertyIsEqualTo expr, Object data) {
+      Map map = (Map) data;
+      map.put(expr.getExpression1().toString(),
+          expr.getExpression2().toString());
+      return map;
+    }
+  }
+
   public SDMXFeatureSource(ContentEntry entry, Dataflow dataflowIn, Query query)
       throws IOException, FactoryException {
 
@@ -75,6 +96,7 @@ public class SDMXFeatureSource extends ContentFeatureSource {
     // FIXME: 4326 only for now
     this.crs = CRS.parseWKT(
         "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.01745329251994328,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"EPSG\",\"4326\"]]");
+
   }
 
   @Override
@@ -126,23 +148,7 @@ public class SDMXFeatureSource extends ContentFeatureSource {
       }
     });
 
-    /*
-     * DIMENSION: dimId: LGA_2011 dimName: Local Government Areas - 2011
-     * dimCLId: CL_ABS_SEIFA_LGA_LGA_2011 dimCLFullId:
-     * ABS/CL_ABS_SEIFA_LGA_LGA_2011 DIMENSION: dimId: INDEX_TYPE dimName: Index
-     * Type dimCLId: CL_ABS_SEIFA_LGA_INDEX_TYPE dimCLFullId:
-     * ABS/CL_ABS_SEIFA_LGA_INDEX_TYPE DIMENSION: dimId: MEASURE dimName:
-     * Measure dimCLId: CL_ABS_SEIFA_LGA_MEASURE dimCLFullId:
-     * ABS/CL_ABS_SEIFA_LGA_MEASURE
-     */
-
     this.schema = builder.buildFeatureType();
-
-    // XXX
-    this.schema.getAttributeDescriptors().forEach(descr -> {
-      System.out
-          .println(descr.getLocalName() + " " + descr.getType().toString());
-    });
     return this.schema;
   }
 
@@ -199,9 +205,48 @@ public class SDMXFeatureSource extends ContentFeatureSource {
   protected FeatureReader<SimpleFeatureType, SimpleFeature> getReaderInternal(
       Query query) throws IOException {
 
-    return new SDMXFeatureReader(this.dataStore.getSDMXClient(), this.schema,
-        this.dataflow, this.dataflowStructure, query,
-        this.dataStore.getLogger());
+    try {
+      return new SDMXFeatureReader(this.dataStore.getSDMXClient(), this.schema,
+          this.dataflow, this.dataflowStructure, this.buildConstraints(query),
+          this.dataStore.getLogger());
+    } catch (SdmxException e) {
+      // FIXME: re-hash the exception into an IOEXception
+      this.dataStore.getLogger().log(Level.SEVERE, e.getMessage(), e);
+      throw new IOException(e);
+    }
+
   }
 
+  /**
+   * Builds the SDMX expression to reflect the GeoTools query give as input
+   * 
+   * @param query
+   *          GeoTools query to transform into SDMX constraints
+   * @return The SDMX expression
+   */
+  public String buildConstraints(Query query) throws SdmxException {
+
+    Map<String, String> expressions;
+    ArrayList<String> constraints = new ArrayList<String>(
+        this.dataflowStructure.getDimensions().size());
+
+    // All-in query
+    if (Query.ALL.equals(query)) {
+      this.dataflowStructure.getDimensions().forEach(dim -> {
+        constraints.add(SDMXDataStore.ALLCODES_EXP);
+      });
+      // Builds a non-all-in query
+    } else {
+      // FIXME: it has to be added to include OR expressions
+      expressions = (Map<String, String>) query.getFilter().accept(
+          new SDMXFeatureSource.FindDimensions(),
+          new HashMap<String, String>());
+
+      this.dataflowStructure.getDimensions().forEach(dim -> {
+        constraints.add((String) expressions.get(dim.getId()));
+      });
+    }
+
+    return String.join(SDMXDataStore.SEPARATOR_EXP, constraints);
+  }
 }
