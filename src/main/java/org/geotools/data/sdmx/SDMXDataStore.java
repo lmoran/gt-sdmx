@@ -53,9 +53,13 @@ public class SDMXDataStore extends ContentDataStore {
   // SDMX query constants
   public static String MEASURE_KEY = "MEASURE";
   public static String REGION_KEY = "REGION";
-  public static String ALLCODES_EXP = "*";
+  public static String TIME_KEY = "TIME";
+  public static String ALLCODES_EXP = "";
   public static String OR_EXP = "+";
   public static String SEPARATOR_EXP = ".";
+  public static String SEPARATOR_DIM = "=";
+  public static String GEOMETRY_ATTR = "the_geom";
+  public static String SEPARATOR_MEASURE = "__";
 
   // SDMX error codes
   public static int ERROR_NORESULTS= 100;

@@ -21,13 +21,16 @@ package org.geotools.data.sdmx;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.geotools.data.FeatureReader;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureImpl;
 import org.geotools.filter.identity.FeatureIdImpl;
 import org.opengis.feature.simple.SimpleFeature;
@@ -55,8 +58,26 @@ public class SDMXFeatureReader
   protected Logger LOGGER;
   protected GenericSDMXClient client;
   protected Iterator<PortableTimeSeries> tsIter;
+  protected PortableTimeSeries ts;
+  protected Iterator<String> timeIter;
+  protected Iterator<Double> obsIter;
   protected boolean empty;
   protected int featIndex = 0;
+
+  protected class DimensionValue {
+
+    public String name;
+    public String value;
+
+    DimensionValue(String s) {
+      this.name = s.split(SDMXDataStore.SEPARATOR_DIM)[0];
+      this.value = s.split(SDMXDataStore.SEPARATOR_DIM)[1];
+    }
+
+    public boolean isMeasure() {
+      return this.name.equals(SDMXDataStore.MEASURE_KEY);
+    }
+  }
 
   public SDMXFeatureReader(GenericSDMXClient clientIn,
       SimpleFeatureType featureTypeIn, Dataflow dataflowIn,
@@ -71,8 +92,7 @@ public class SDMXFeatureReader
 
     try {
       this.tsIter = this.client.getTimeSeries(dataflowIn, dfStructureIn,
-          sdmxConstraints, null, null,
-          false, null, false).iterator();
+          sdmxConstraints, null, null, false, null, false).iterator();
     } catch (SdmxException e) {
       if (e instanceof SdmxResponseException && ((SdmxResponseException) e)
           .getResponseCode() == SDMXDataStore.ERROR_NORESULTS) {
@@ -106,7 +126,17 @@ public class SDMXFeatureReader
       return false;
     }
 
-    return this.tsIter.hasNext();
+    if (this.ts == null) {
+      this.ts = this.tsIter.next();
+      this.timeIter = this.ts.getTimeSlots().iterator();
+      this.obsIter = this.ts.getObservations().iterator();
+    }
+
+    if (this.timeIter.hasNext() == false && this.tsIter.hasNext() == false) {
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -116,21 +146,37 @@ public class SDMXFeatureReader
   @Override
   public SimpleFeature next() throws NoSuchElementException, IOException {
 
-    if (this.empty == true) {
+    if (this.hasNext() == false) {
       return null;
     }
 
-    // TODO
-    List<Object> values = new ArrayList();
-    values.add(null);
+    if (this.timeIter.hasNext() == false && this.tsIter.hasNext() == true) {
+      this.ts = this.tsIter.next();
+      this.timeIter = this.ts.getTimeSlots().iterator();
+      this.obsIter = this.ts.getObservations().iterator();
+    }
 
-    PortableTimeSeries ts = this.tsIter.next();
-    ts.getObservations().forEach((value) -> {
-      values.add(new Double(value));
+    if (this.timeIter.hasNext() == false) {
+      return null;
+    }
+
+    SimpleFeatureBuilder builder = new SimpleFeatureBuilder(this.featureType);
+    builder.set(SDMXDataStore.GEOMETRY_ATTR, null);
+    builder.set(SDMXDataStore.TIME_KEY, this.timeIter.next());
+
+    ts.getDimensions().forEach((dimIn) -> {
+      DimensionValue dimValue = new DimensionValue(dimIn);
+
+      if (dimValue.isMeasure()) {
+        builder.set(SDMXDataStore.MEASURE_KEY + SDMXDataStore.SEPARATOR_MEASURE
+            + dimValue.value, this.obsIter.next());
+      } else {
+        builder.set(dimValue.name, dimValue.value);
+      }
     });
 
-    return new SimpleFeatureImpl(values, this.featureType,
-        new FeatureIdImpl(String.valueOf(ts.hashCode())));
+    return builder.buildFeature(
+        (new FeatureIdImpl(String.valueOf(this.ts.hashCode()))).toString());
   }
 
   @Override

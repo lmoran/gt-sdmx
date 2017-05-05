@@ -31,7 +31,7 @@ import org.geotools.data.sdmx.SDMXFeatureReader;
 import org.geotools.factory.CommonFactoryFinder;
 import org.geotools.util.logging.Logging;
 import org.geotools.filter.text.cql2.CQL;
-
+import org.geotools.filter.text.ecql.ECQL;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -62,7 +62,7 @@ public class SDMXFeatureReaderTest {
   SimpleFeatureType fType;
 
   @Test
-  public void noFeaturesNext() throws Exception {
+  public void queryExpression() throws Exception {
 
     this.urlMock = PowerMockito.mock(URL.class);
     this.clientMock = PowerMockito.mock(HttpURLConnection.class);
@@ -85,20 +85,27 @@ public class SDMXFeatureReaderTest {
     this.source = (SDMXFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
-    this.source.buildFeatureType();
-    this.reader = (SDMXFeatureReader) this.source.getReader(Query.ALL);
+    assertEquals("......", this.source.buildConstraints(Query.ALL));
 
-    assertTrue(this.reader.hasNext());
-    SimpleFeature feat;
-    while (this.reader.hasNext()) {
-      feat = this.reader.next();
-      String s = feat.getID() + ": ";
-      for (int i = 0; i < feat.getAttributeCount(); i++) {
-        s += "|" + feat.getAttribute(i);
-        // assertNull(feat.getAttribute(0));
-      }
-      System.out.println(s);
-    }
+    // curl -XGET
+    // "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_CENSUS2011_T04/3.TOT.TOT.0.AUS.0.A/ABS"
+    // http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_CENSUS2011_T04/
+    // 1+3.TOT.TOT.0.AUS.0.A/ABS?startTime=2001&endTime=2011
+    Filter filter = ECQL.toFilter("MEASURE='3' and " + "MSTP='TOT' and "
+        + "AGE='TOT' and " + "STATE='0' and " + "REGIONTYPE='AUS' and "
+        + "REGION='0' and " + "FREQUENCY='A'");
+    assertEquals("3.TOT.TOT.0.AUS.0.A",
+        this.source.buildConstraints(new Query("", filter)));
+
+    filter = ECQL
+        .toFilter("principalMineralResource IN ('silver','oil', 'gold' )");
+
+    filter = ECQL.toFilter("MEASURE='3' and " + "MSTP='TOT' and "
+        + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
+        + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'");
+    assertEquals("3.TOT.TOT.1.STE.1+2+3+4.A",
+        this.source.buildConstraints(new Query("", filter)));
+
   }
 
   @Test
@@ -133,7 +140,7 @@ public class SDMXFeatureReaderTest {
   }
 
   @Test
-  public void queryExpression() throws Exception {
+  public void readFeatures() throws Exception {
 
     this.urlMock = PowerMockito.mock(URL.class);
     this.clientMock = PowerMockito.mock(HttpURLConnection.class);
@@ -156,19 +163,27 @@ public class SDMXFeatureReaderTest {
     this.source = (SDMXFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
-    assertEquals("*.*.*.*.*.*.*", this.source.buildConstraints(Query.ALL));
+    this.source.buildFeatureType();
+    this.reader = (SDMXFeatureReader) this.source.getReader(Query.ALL);
 
-    // url -XGET
-    // "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_CENSUS2011_T04/3.TOT.TOT.0.AUS.0.A/ABS"
-    Filter filter = CQL.toFilter("MEASURE='3' and "
-        + "MSTP='TOT' and "
-        + "AGE='TOT' and "
-        + "STATE='0' and "
-        + "REGIONTYPE='AUS' and "
-        + "REGION='0' and "
-        + "FREQUENCY='A'");
-    assertEquals("3.TOT.TOT.0.AUS.0.A",
-        this.source.buildConstraints(new Query("", filter)));
+    assertTrue(this.reader.hasNext());
+    SimpleFeature feat;
+    int nObs = 0;
+    while (this.reader.hasNext()) {
+      feat = this.reader.next();
+      assertNotNull(feat);
+      String s = feat.getID() + "|"
+          + feat.getType().getGeometryDescriptor().getLocalName() + ":"
+          + feat.getDefaultGeometry();
+      for (int i = 1; i < feat.getAttributeCount(); i++) {
+        s += "|" + feat.getType().getDescriptor(i).getLocalName() + ":"
+            + feat.getAttribute(i);
+      }
+      System.out.println(s);
+      nObs++;
+    }
+
+    assertEquals(6, nObs);
   }
 
 }

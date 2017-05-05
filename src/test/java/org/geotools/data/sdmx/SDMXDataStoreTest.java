@@ -106,10 +106,10 @@ public class SDMXDataStoreTest {
     assertEquals(2, this.dataStore.createTypeNames().size());
 
     assertNotNull(this.dataStore.getFeatureSource(Helper.T04).getSchema());
-    assertEquals(9, this.dataStore.getFeatureSource(Helper.T04).getSchema()
+    assertEquals(11, this.dataStore.getFeatureSource(Helper.T04).getSchema()
         .getAttributeCount());
     assertNotNull(this.dataStore.getFeatureSource(Helper.SEIFA_LGA).getSchema());
-    assertEquals(14, this.dataStore.getFeatureSource(Helper.SEIFA_LGA).getSchema()
+    assertEquals(16, this.dataStore.getFeatureSource(Helper.SEIFA_LGA).getSchema()
         .getAttributeCount());
   }
 

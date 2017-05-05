@@ -25,6 +25,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
@@ -47,6 +48,8 @@ import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.Name;
 import org.opengis.filter.And;
+import org.opengis.filter.Id;
+import org.opengis.filter.Or;
 import org.opengis.filter.BinaryComparisonOperator;
 import org.opengis.filter.BinaryLogicOperator;
 import org.opengis.filter.FilterVisitor;
@@ -54,6 +57,8 @@ import org.opengis.filter.PropertyIsEqualTo;
 import org.opengis.filter.expression.PropertyName;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+
+import com.vividsolutions.jts.geom.Point;
 
 import it.bancaditalia.oss.sdmx.api.DataFlowStructure;
 import it.bancaditalia.oss.sdmx.api.Dataflow;
@@ -77,13 +82,32 @@ public class SDMXFeatureSource extends ContentFeatureSource {
   protected Dataflow dataflow;
   protected DataFlowStructure dataflowStructure;
 
-  protected final class FindDimensions extends DefaultFilterVisitor {
+  protected final class VisitFilter extends DefaultFilterVisitor {
+
+    public Object visit(Or expr, Object data) {
+      Map<String, String> map = (Map<String, String>) data;
+      List<String> ids = new ArrayList<String>();
+      List<String> property = new ArrayList<String>();
+
+      expr.getChildren().forEach(eqExpr -> {
+        property
+            .add(((PropertyIsEqualTo) (eqExpr)).getExpression1().toString());
+        ids.add(((PropertyIsEqualTo) (eqExpr)).getExpression2().toString());
+      });
+
+      map.put(property.get(0),
+          String.join(SDMXDataStore.OR_EXP, ((List<String>) ids)));
+      return map;
+    }
+
     public Object visit(PropertyIsEqualTo expr, Object data) {
-      Map map = (Map) data;
+      Map<String, String> map = (Map<String, String>) data;
+
       map.put(expr.getExpression1().toString(),
           expr.getExpression2().toString());
       return map;
     }
+
   }
 
   public SDMXFeatureSource(ContentEntry entry, Dataflow dataflowIn, Query query)
@@ -138,10 +162,15 @@ public class SDMXFeatureSource extends ContentFeatureSource {
     this.dataflowStructure = this.dataStore
         .getDataFlowStructure(this.entry.getName().getLocalPart());
 
+    builder.add("the_geom", Point.class);
+    builder.setDefaultGeometry(SDMXDataStore.GEOMETRY_ATTR);
+    builder.add(SDMXDataStore.TIME_KEY, java.lang.String.class);
+
     this.dataflowStructure.getDimensions().forEach(dim -> {
       if (SDMXDataStore.MEASURE_KEY.equals(dim.getId().toUpperCase())) {
         dim.getCodeList().getCodes().entrySet().forEach(entry -> {
-          builder.add(entry.getKey(), java.lang.Double.class);
+          builder.add(SDMXDataStore.MEASURE_KEY + SDMXDataStore.SEPARATOR_MEASURE + entry.getKey(),
+              java.lang.Double.class);
         });
       } else {
         builder.add(dim.getId(), java.lang.String.class);
@@ -184,21 +213,8 @@ public class SDMXFeatureSource extends ContentFeatureSource {
 
   @Override
   protected int getCountInternal(Query query) throws IOException {
-    /*
-     * Count cnt; Map<String, Object> params = new HashMap<String, Object>(
-     * SDMXDataStore.DEFAULT_PARAMS); params.put(SDMXDataStore.COUNT_PARAM,
-     * true); params.put(SDMXDataStore.GEOMETRY_PARAM,
-     * this.composeExtent(this.getBoundsInternal(query)));
-     * 
-     * try { cnt = (new Gson()).fromJson(
-     * SDMXDataStore.InputStreamToString(this.dataStore .retrieveJSON("POST",
-     * (new URL(this.composeQueryURL())), params)), Count.class); } catch
-     * (HTTPException e) { throw new IOException( "Error " + e.getStatusCode() +
-     * " " + e.getMessage()); }
-     * 
-     * return cnt == null ? -1 : cnt.getCount();
-     */
-    return 1; // XXX
+    // FIXME: I think SDMNX does not support that
+    return 1;
   }
 
   @Override
@@ -214,7 +230,6 @@ public class SDMXFeatureSource extends ContentFeatureSource {
       this.dataStore.getLogger().log(Level.SEVERE, e.getMessage(), e);
       throw new IOException(e);
     }
-
   }
 
   /**
@@ -237,10 +252,8 @@ public class SDMXFeatureSource extends ContentFeatureSource {
       });
       // Builds a non-all-in query
     } else {
-      // FIXME: it has to be added to include OR expressions
       expressions = (Map<String, String>) query.getFilter().accept(
-          new SDMXFeatureSource.FindDimensions(),
-          new HashMap<String, String>());
+          new SDMXFeatureSource.VisitFilter(), new HashMap<String, String>());
 
       this.dataflowStructure.getDimensions().forEach(dim -> {
         constraints.add((String) expressions.get(dim.getId()));
