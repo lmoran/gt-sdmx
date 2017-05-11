@@ -87,23 +87,19 @@ public class SDMXFeatureReaderTest {
 
     assertEquals("......", this.source.buildConstraints(Query.ALL));
 
-    // curl -XGET
-    // "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_CENSUS2011_T04/3.TOT.TOT.0.AUS.0.A/ABS"
-    // http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_CENSUS2011_T04/
-    // 1+3.TOT.TOT.0.AUS.0.A/ABS?startTime=2001&endTime=2011
     Filter filter = ECQL.toFilter("MEASURE='3' and " + "MSTP='TOT' and "
         + "AGE='TOT' and " + "STATE='0' and " + "REGIONTYPE='AUS' and "
         + "REGION='0' and " + "FREQUENCY='A'");
-    assertEquals("3.TOT.TOT.0.AUS.0.A",
+    assertEquals(".TOT.TOT.0.AUS.0.A",
         this.source.buildConstraints(new Query("", filter)));
 
     filter = ECQL
         .toFilter("principalMineralResource IN ('silver','oil', 'gold' )");
 
-    filter = ECQL.toFilter("MEASURE='3' and " + "MSTP='TOT' and "
+    filter = ECQL.toFilter("MSTP='TOT' and "
         + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
         + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'");
-    assertEquals("3.TOT.TOT.1.STE.1+2+3+4.A",
+    assertEquals(".TOT.TOT.1.STE.1+2+3+4.A",
         this.source.buildConstraints(new Query("", filter)));
 
   }
@@ -164,7 +160,11 @@ public class SDMXFeatureReaderTest {
         .getFeatureSource(Helper.T04);
 
     this.source.buildFeatureType();
-    this.reader = (SDMXFeatureReader) this.source.getReader(Query.ALL);
+    Query query = new Query();
+    query.setFilter(ECQL.toFilter("MSTP='TOT' and "
+        + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
+        + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'"));
+    this.reader = (SDMXFeatureReader) this.source.getReader(query);
 
     assertTrue(this.reader.hasNext());
     SimpleFeature feat;

@@ -62,8 +62,8 @@ public class SDMXDataStore extends ContentDataStore {
   public static String SEPARATOR_MEASURE = "__";
 
   // SDMX error codes
-  public static int ERROR_NORESULTS= 100;
-  
+  public static int ERROR_NORESULTS = 100;
+
   // Cache of feature sources
   protected Map<Name, SDMXFeatureSource> featureSources = new HashMap<Name, SDMXFeatureSource>();
 
@@ -98,11 +98,11 @@ public class SDMXDataStore extends ContentDataStore {
     this.user = user;
     this.password = password;
 
-    // SDMXClientFactory.addProvider(namespaceIn, this.apiUrl, false, false,
-    // false, "ABS",
-    // false); // TODO
+//    SDMXClientFactory.addProvider(namespaceIn, this.apiUrl, false, false, false,
+//        name, false);
+    // FIXME: it seems ot work only with a pre-defined client, force to ABS for the time being
     try {
-      this.sdmxClient = SDMXClientFactory.createClient(name);
+      this.sdmxClient = SDMXClientFactory.createClient("ABS");
     } catch (SdmxException e) {
       LOGGER.log(Level.SEVERE, "Cannot create client", e);
       throw (e);
@@ -111,6 +111,25 @@ public class SDMXDataStore extends ContentDataStore {
     // TODO: add credentials support
     // this.sdmxClient = new RestSdmxClient(name, new URL(apiEndpoint), false,
     // false, false);
+  }
+
+  /**
+   * Composes the property name of a Measure
+   * 
+   * @param Measure name
+   * @return The property name
+   */
+  public static String measureToPropertyName(String measureName) {
+    return SDMXDataStore.MEASURE_KEY + SDMXDataStore.SEPARATOR_MEASURE + measureName;  
+  }
+
+  /**
+   * Returns true if the propertyname is the one of a Measure
+   * 
+   * @return measure flag
+   */
+  public static boolean isMeasure(String propertyName) {
+    return propertyName.startsWith(SDMXDataStore.MEASURE_KEY + SDMXDataStore.SEPARATOR_MEASURE); 
   }
 
   @Override

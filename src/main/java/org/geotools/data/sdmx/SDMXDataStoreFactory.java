@@ -49,7 +49,7 @@ public class SDMXDataStoreFactory implements DataStoreFactorySpi {
       .getLogger(SDMXDataStoreFactory.class.getName());
 
   public static final String FACTORY_NAME = "SDMX";
-  public static final String FACTORY_DESCRIPTION = "SDMX 2.0 SOAP API";
+  public static final String FACTORY_DESCRIPTION = "SDMX 2.1 ReST API";
 
   private static List<Param> paramMetadata = new ArrayList<Param>(10);
 
