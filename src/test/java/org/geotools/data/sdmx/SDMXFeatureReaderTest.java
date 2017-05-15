@@ -90,16 +90,16 @@ public class SDMXFeatureReaderTest {
     Filter filter = ECQL.toFilter("MEASURE='3' and " + "MSTP='TOT' and "
         + "AGE='TOT' and " + "STATE='0' and " + "REGIONTYPE='AUS' and "
         + "REGION='0' and " + "FREQUENCY='A'");
-    assertEquals(".TOT.TOT.0.AUS.0.A",
+    assertEquals("3.TOT.TOT.0.AUS.0.A",
         this.source.buildConstraints(new Query("", filter)));
 
     filter = ECQL
         .toFilter("principalMineralResource IN ('silver','oil', 'gold' )");
 
-    filter = ECQL.toFilter("MSTP='TOT' and "
+    filter = ECQL.toFilter("MEASURE in ('1', '2', '3') and MSTP='TOT' and "
         + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
         + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'");
-    assertEquals(".TOT.TOT.1.STE.1+2+3+4.A",
+    assertEquals("1+2+3.TOT.TOT.1.STE.1+2+3+4.A",
         this.source.buildConstraints(new Query("", filter)));
 
   }
@@ -136,7 +136,7 @@ public class SDMXFeatureReaderTest {
   }
 
   @Test
-  public void readFeatures() throws Exception {
+  public void readFeaturesMeasure1() throws Exception {
 
     this.urlMock = PowerMockito.mock(URL.class);
     this.clientMock = PowerMockito.mock(HttpURLConnection.class);
@@ -152,7 +152,7 @@ public class SDMXFeatureReaderTest {
         .thenReturn(
             Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
         .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
-        .thenReturn(Helper.readXMLAsStream("test-data/query-t04.xml"));
+        .thenReturn(Helper.readXMLAsStream("test-data/query-t04-1.xml"));
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
@@ -161,7 +161,7 @@ public class SDMXFeatureReaderTest {
 
     this.source.buildFeatureType();
     Query query = new Query();
-    query.setFilter(ECQL.toFilter("MSTP='TOT' and "
+    query.setFilter(ECQL.toFilter("MEASURE = 1 and MSTP='TOT' and "
         + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
         + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'"));
     this.reader = (SDMXFeatureReader) this.source.getReader(query);
@@ -172,6 +172,18 @@ public class SDMXFeatureReaderTest {
     while (this.reader.hasNext()) {
       feat = this.reader.next();
       assertNotNull(feat);
+      if (nObs == 0) {
+        assertNotNull(feat.getID());
+        assertNull(feat.getDefaultGeometry());
+        assertEquals("2001", feat.getAttribute(1));
+        assertEquals(2468518.0, feat.getAttribute(2));
+        assertEquals("TOT", feat.getAttribute(3));
+        assertEquals("TOT", feat.getAttribute(4));
+        assertEquals("1", feat.getAttribute(5));
+        assertEquals("STE", feat.getAttribute(6));
+        assertEquals("1", feat.getAttribute(7));
+        assertEquals("A", feat.getAttribute(8));
+      }
       String s = feat.getID() + "|"
           + feat.getType().getGeometryDescriptor().getLocalName() + ":"
           + feat.getDefaultGeometry();
@@ -183,7 +195,123 @@ public class SDMXFeatureReaderTest {
       nObs++;
     }
 
-    assertEquals(6, nObs);
+    assertEquals(3, nObs);
   }
 
+  @Test
+  public void readFeaturesMeasure2() throws Exception {
+
+    this.urlMock = PowerMockito.mock(URL.class);
+    this.clientMock = PowerMockito.mock(HttpURLConnection.class);
+
+    PowerMockito.whenNew(URL.class).withAnyArguments().thenReturn(this.urlMock);
+    PowerMockito.when(this.urlMock.openConnection())
+        .thenReturn(this.clientMock);
+    when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK);
+    when(clientMock.getInputStream())
+        .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
+        .thenReturn(
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/query-t04-2.xml"));
+
+    this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
+    this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
+    this.source = (SDMXFeatureSource) this.dataStore
+        .getFeatureSource(Helper.T04);
+
+    this.source.buildFeatureType();
+    Query query = new Query();
+    query.setFilter(ECQL.toFilter("MEASURE = 2 and MSTP='TOT' and "
+        + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
+        + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'"));
+    this.reader = (SDMXFeatureReader) this.source.getReader(query);
+
+    assertTrue(this.reader.hasNext());
+    SimpleFeature feat;
+    int nObs = 0;
+    while (this.reader.hasNext()) {
+      feat = this.reader.next();
+      assertNotNull(feat);
+      if (nObs == 0) {
+        assertEquals(2583729.0, feat.getAttribute(2));
+      }
+      String s = feat.getID() + "|"
+          + feat.getType().getGeometryDescriptor().getLocalName() + ":"
+          + feat.getDefaultGeometry();
+      for (int i = 1; i < feat.getAttributeCount(); i++) {
+        s += "|" + feat.getType().getDescriptor(i).getLocalName() + ":"
+            + feat.getAttribute(i);
+      }
+      System.out.println(s);
+      nObs++;
+    }
+
+    assertEquals(3, nObs);
+  }
+
+  @Test
+  public void readFeaturesMeasure123() throws Exception {
+
+    this.urlMock = PowerMockito.mock(URL.class);
+    this.clientMock = PowerMockito.mock(HttpURLConnection.class);
+
+    PowerMockito.whenNew(URL.class).withAnyArguments().thenReturn(this.urlMock);
+    PowerMockito.when(this.urlMock.openConnection())
+        .thenReturn(this.clientMock);
+    when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK);
+    when(clientMock.getInputStream())
+        .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
+        .thenReturn(
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/query-t04-321.xml"));
+
+    this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
+    this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
+    this.source = (SDMXFeatureSource) this.dataStore
+        .getFeatureSource(Helper.T04);
+
+    this.source.buildFeatureType();
+    Query query = new Query();
+    query.setFilter(ECQL.toFilter("MEASURE in ('3','2', '1') and MSTP='TOT' and "
+        + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
+        + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'"));
+    this.reader = (SDMXFeatureReader) this.source.getReader(query);
+
+    assertTrue(this.reader.hasNext());
+    SimpleFeature feat;
+    int nObs = 0;
+    while (this.reader.hasNext()) {
+      feat = this.reader.next();
+      assertNotNull(feat);
+      if (nObs == 0) {
+        assertNotNull(feat.getID());
+        assertNull(feat.getDefaultGeometry());
+        assertEquals("2001", feat.getAttribute(1));
+        assertEquals(2468518.0, feat.getAttribute(2));
+        assertEquals("TOT", feat.getAttribute(3));
+        assertEquals("TOT", feat.getAttribute(4));
+        assertEquals("1", feat.getAttribute(5));
+        assertEquals("STE", feat.getAttribute(6));
+        assertEquals("1", feat.getAttribute(7));
+        assertEquals("A", feat.getAttribute(8));
+      }
+      String s = feat.getID() + "|"
+          + feat.getType().getGeometryDescriptor().getLocalName() + ":"
+          + feat.getDefaultGeometry();
+      for (int i = 1; i < feat.getAttributeCount(); i++) {
+        s += "|" + feat.getType().getDescriptor(i).getLocalName() + ":"
+            + feat.getAttribute(i);
+      }
+      System.out.println(s);
+      nObs++;
+    }
+
+    assertEquals(9, nObs);
+  }
 }

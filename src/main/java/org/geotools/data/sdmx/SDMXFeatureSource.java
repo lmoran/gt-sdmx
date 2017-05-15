@@ -103,10 +103,6 @@ public class SDMXFeatureSource extends ContentFeatureSource {
     public Object visit(PropertyIsEqualTo expr, Object data) {
       Map<String, String> map = (Map<String, String>) data;
 
-      if (SDMXDataStore.isMeasure(expr.getExpression1().toString())) {
-        return map;
-      }
-
       map.put(expr.getExpression1().toString(),
           expr.getExpression2().toString());
       return map;
@@ -169,14 +165,10 @@ public class SDMXFeatureSource extends ContentFeatureSource {
     builder.add("the_geom", Point.class);
     builder.setDefaultGeometry(SDMXDataStore.GEOMETRY_ATTR);
     builder.add(SDMXDataStore.TIME_KEY, java.lang.String.class);
+    builder.add(SDMXDataStore.MEASURE_KEY, java.lang.Double.class);
 
     this.dataflowStructure.getDimensions().forEach(dim -> {
-      if (SDMXDataStore.MEASURE_KEY.equals(dim.getId().toUpperCase())) {
-        dim.getCodeList().getCodes().entrySet().forEach(entry -> {
-          builder.add(SDMXDataStore.MEASURE_KEY + SDMXDataStore.SEPARATOR_MEASURE + entry.getKey(),
-              java.lang.Double.class);
-        });
-      } else {
+      if (!SDMXDataStore.MEASURE_KEY.equals(dim.getId().toUpperCase())) {
         builder.add(dim.getId(), java.lang.String.class);
       }
     });
@@ -259,8 +251,6 @@ public class SDMXFeatureSource extends ContentFeatureSource {
     } else {
       expressions = (Map<String, String>) query.getFilter().accept(
           new SDMXFeatureSource.VisitFilter(), new HashMap<String, String>());
-      // FIXME: only one measure shoudl be returned
-      expressions.put(SDMXDataStore.MEASURE_KEY, SDMXDataStore.ALLCODES_EXP); 
       this.dataflowStructure.getDimensions().forEach(dim -> {
         constraints.add((String) expressions.get(dim.getId()));
       });
@@ -268,11 +258,11 @@ public class SDMXFeatureSource extends ContentFeatureSource {
 
     return String.join(SDMXDataStore.SEPARATOR_EXP, constraints);
   }
-  
+
   public boolean canTransact() {
     return false;
   }
-  
+
   public boolean canFilter() {
     return true;
   }

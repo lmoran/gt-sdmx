@@ -14,6 +14,7 @@ import org.geotools.data.DataStore;
 public class Helper {
 
 //  public static String URL = "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetDataStructure/ABS_SEIFA_LGA";
+  public static String PROVIDER = "ABS";
   public static String URL = "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetDataStructure/ALL/ABS";
   public static String NAMESPACE = "http://aurin.org.au";
   public static String USER = "testuser";
@@ -49,6 +50,7 @@ public class Helper {
     Map<String, Serializable> params = new HashMap<String, Serializable>();
     params.put(SDMXDataStoreFactory.NAME_PARAM.key, "ABS");
     params.put(SDMXDataStoreFactory.NAMESPACE_PARAM.key, NAMESPACE);
+    params.put(SDMXDataStoreFactory.PROVIDER_PARAM.key, PROVIDER);
     params.put(SDMXDataStoreFactory.URL_PARAM.key, URL);
     params.put(SDMXDataStoreFactory.USER_PARAM.key, USER);
     params.put(SDMXDataStoreFactory.PASSWORD_PARAM.key, PASSWORD);
@@ -71,6 +73,7 @@ public class Helper {
     Map<String, Serializable> params = new HashMap<String, Serializable>();
     params.put(SDMXDataStoreFactory.NAME_PARAM.key, "ABS");
     params.put(SDMXDataStoreFactory.NAMESPACE_PARAM.key, namespace);
+    params.put(SDMXDataStoreFactory.PROVIDER_PARAM.key, PROVIDER);
     params.put(SDMXDataStoreFactory.URL_PARAM.key, url);
     params.put(SDMXDataStoreFactory.USER_PARAM.key, user);
     params.put(SDMXDataStoreFactory.PASSWORD_PARAM.key, password);

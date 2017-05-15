@@ -75,8 +75,8 @@ public class SDMXDataStore extends ContentDataStore {
   protected Map<String, Dataflow> dataflows = new HashMap<String, Dataflow>();
   protected Map<String, DataFlowStructure> dataflowStructures = new HashMap<String, DataFlowStructure>();
 
-  public SDMXDataStore(String name, String namespaceIn, String apiEndpoint,
-      String user, String password)
+  public SDMXDataStore(String name, String namespaceIn, String provider,
+      String apiEndpoint, String user, String password)
       throws MalformedURLException, IOException, SdmxException {
 
     super();
@@ -98,11 +98,9 @@ public class SDMXDataStore extends ContentDataStore {
     this.user = user;
     this.password = password;
 
-//    SDMXClientFactory.addProvider(namespaceIn, this.apiUrl, false, false, false,
-//        name, false);
-    // FIXME: it seems ot work only with a pre-defined client, force to ABS for the time being
+    // FIXME: it seems ot work only with a pre-defined client
     try {
-      this.sdmxClient = SDMXClientFactory.createClient("ABS");
+      this.sdmxClient = SDMXClientFactory.createClient(provider);
     } catch (SdmxException e) {
       LOGGER.log(Level.SEVERE, "Cannot create client", e);
       throw (e);
@@ -111,25 +109,6 @@ public class SDMXDataStore extends ContentDataStore {
     // TODO: add credentials support
     // this.sdmxClient = new RestSdmxClient(name, new URL(apiEndpoint), false,
     // false, false);
-  }
-
-  /**
-   * Composes the property name of a Measure
-   * 
-   * @param Measure name
-   * @return The property name
-   */
-  public static String measureToPropertyName(String measureName) {
-    return SDMXDataStore.MEASURE_KEY + SDMXDataStore.SEPARATOR_MEASURE + measureName;  
-  }
-
-  /**
-   * Returns true if the propertyname is the one of a Measure
-   * 
-   * @return measure flag
-   */
-  public static boolean isMeasure(String propertyName) {
-    return propertyName.startsWith(SDMXDataStore.MEASURE_KEY + SDMXDataStore.SEPARATOR_MEASURE); 
   }
 
   @Override

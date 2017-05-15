@@ -168,7 +168,7 @@ public class SDMXFeatureReader
       DimensionValue dimValue = new DimensionValue(dimIn);
 
       if (dimValue.isMeasure()) {
-        builder.set(SDMXDataStore.measureToPropertyName(dimValue.value), this.obsIter.next());
+        builder.set(SDMXDataStore.MEASURE_KEY, this.obsIter.next());
       } else {
         builder.set(dimValue.name, dimValue.value);
       }

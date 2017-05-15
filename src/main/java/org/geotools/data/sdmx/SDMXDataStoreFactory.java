@@ -55,18 +55,22 @@ public class SDMXDataStoreFactory implements DataStoreFactorySpi {
 
   public static final Param NAMESPACE_PARAM = new Param("namespace",
       String.class, "", true);
-  public static final Param NAME_PARAM = new Param("SDMX source well-known name", String.class, "",
-      true);
-  public static final Param URL_PARAM = new Param(
-      "Endpoint of the SDMX ReST API", String.class, "", true);
+  public static final Param NAME_PARAM = new Param("SDMX source name", String.class,
+      "Source", true);
+  public static final Param PROVIDER_PARAM = new Param("Well-known provider name",
+      String.class, "ProviderName", true, "ABS");
+  public static final Param URL_PARAM = new Param("Endpoint of the SDMX ReST API", String.class,
+      "Endpoint", true,
+      "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx");
   public static final Param USER_PARAM = new Param("Username of the endpoint",
-      String.class, "", false, null);
+      String.class, "Username", false, null);
   public static final Param PASSWORD_PARAM = new Param(
-      "Password associated with the username.", String.class, "", false, null,
+      "Password associated with the username", String.class, "Password", false, null,
       Collections.singletonMap(Parameter.IS_PASSWORD, Boolean.TRUE));
 
   static {
     paramMetadata.add(NAMESPACE_PARAM);
+    paramMetadata.add(PROVIDER_PARAM);
     paramMetadata.add(URL_PARAM);
     paramMetadata.add(USER_PARAM);
     paramMetadata.add(PASSWORD_PARAM);
@@ -84,7 +88,9 @@ public class SDMXDataStoreFactory implements DataStoreFactorySpi {
     try {
       return new SDMXDataStore((String) params.get(NAME_PARAM.key),
           (String) params.get(NAMESPACE_PARAM.key),
-          (String) params.get(URL_PARAM.key), (String) params.get(USER_PARAM.key),
+          (String) params.get(PROVIDER_PARAM.key),
+          (String) params.get(URL_PARAM.key),
+          (String) params.get(USER_PARAM.key),
           (String) params.get(PASSWORD_PARAM.key));
     } catch (SdmxException e) {
       // FIXME: re-packing an exception is not nice...
