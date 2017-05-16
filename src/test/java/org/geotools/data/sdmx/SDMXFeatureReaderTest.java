@@ -293,6 +293,7 @@ public class SDMXFeatureReaderTest {
         assertNotNull(feat.getID());
         assertNull(feat.getDefaultGeometry());
         assertEquals("2001", feat.getAttribute(1));
+        // Only the first measure is returned 
         assertEquals(2468518.0, feat.getAttribute(2));
         assertEquals("TOT", feat.getAttribute(3));
         assertEquals("TOT", feat.getAttribute(4));

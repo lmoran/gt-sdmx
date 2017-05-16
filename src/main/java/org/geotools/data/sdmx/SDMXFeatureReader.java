@@ -82,8 +82,11 @@ public class SDMXFeatureReader
   public SDMXFeatureReader(GenericSDMXClient clientIn,
       SimpleFeatureType featureTypeIn, Dataflow dataflowIn,
       DataFlowStructure dfStructureIn, String sdmxConstraints, Logger logger)
-      throws IOException {
+      throws IOException, SdmxException {
 
+    logger.log(Level.FINE,
+        "SDMX Server " + clientIn.getEndpoint().toExternalForm()
+            + " is about to be queried with: " + sdmxConstraints);
     this.featureType = featureTypeIn;
     this.featIndex = 0;
     this.LOGGER = logger;
