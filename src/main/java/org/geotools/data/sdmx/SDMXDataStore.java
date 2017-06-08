@@ -36,6 +36,7 @@ import org.opengis.referencing.FactoryException;
 
 import it.bancaditalia.oss.sdmx.api.DataFlowStructure;
 import it.bancaditalia.oss.sdmx.api.Dataflow;
+import it.bancaditalia.oss.sdmx.api.Dimension;
 import it.bancaditalia.oss.sdmx.client.SDMXClientFactory;
 import it.bancaditalia.oss.sdmx.api.GenericSDMXClient;
 import it.bancaditalia.oss.sdmx.exceptions.SdmxException;
@@ -54,18 +55,21 @@ public class SDMXDataStore extends ContentDataStore {
   public static String MEASURE_KEY = "MEASURE";
   public static String REGION_KEY = "REGION";
   public static String TIME_KEY = "TIME";
+  public static String CODE_KEY = "CODE";
+  public static String VALUE_KEY = "VALUE";
   public static String ALLCODES_EXP = "";
   public static String OR_EXP = "+";
   public static String SEPARATOR_EXP = ".";
   public static String SEPARATOR_DIM = "=";
   public static String GEOMETRY_ATTR = "the_geom";
-  public static String SEPARATOR_MEASURE = "__";
+  public static String SEPARATOR_FEATURETYPE = "__";
+  public static String FEATURETYPE_SUFFIX = "SDMX";
 
   // SDMX error codes
   public static int ERROR_NORESULTS = 100;
 
   // Cache of feature sources
-  protected Map<Name, SDMXFeatureSource> featureSources = new HashMap<Name, SDMXFeatureSource>();
+  protected Map<Name, ContentFeatureSource> featureSources = new HashMap<Name, ContentFeatureSource>();
 
   protected URL namespace;
   protected URL apiUrl;
@@ -111,6 +115,95 @@ public class SDMXDataStore extends ContentDataStore {
     // false, false);
   }
 
+  /**
+   * Return the complete type name from the dataflow one
+   * 
+   * @param dfName
+   *          Name of the dataflow
+   * @param dimName
+   *          Name of the dimension
+   * @return
+   */
+  public static String composeDataflowTypeName(String dfName) {
+    return dfName + SDMXDataStore.SEPARATOR_FEATURETYPE + FEATURETYPE_SUFFIX;
+  }
+
+  /**
+   * Return the complete type name from the dimension one
+   * 
+   * @param dfName
+   *          Name of the dataflow
+   * @return
+   */
+  public static String composeDimensionTypeName(String dfName, String dimName) {
+    return dfName + SDMXDataStore.SEPARATOR_FEATURETYPE + FEATURETYPE_SUFFIX
+        + SDMXDataStore.SEPARATOR_FEATURETYPE + dimName;
+  }
+
+  /**
+   * Checks whether typeName represents an SDMX dataflow
+   * 
+   * @param typeName
+   *          Name of the typename
+   * @return
+   */
+  public static boolean isDataflowName(String typeName) {
+    return typeName.matches("(.+)" + SDMXDataStore.SEPARATOR_FEATURETYPE
+        + SDMXDataStore.FEATURETYPE_SUFFIX + "$");
+  }
+
+  /**
+   * Checks whether typeName represents an SDMX dimension
+   * 
+   * @param typeName
+   *          Name of the typename
+   * @return
+   */
+  public static boolean isDimensionName(String typeName) {
+    return typeName.matches("(.+)" + SDMXDataStore.SEPARATOR_FEATURETYPE
+        + SDMXDataStore.FEATURETYPE_SUFFIX + SDMXDataStore.SEPARATOR_FEATURETYPE
+        + "(.+)$");
+  }
+
+  /**
+   * Returns the data flow name from a type name (returns an empty string if
+   * this is not an SDMX feature type)
+   * 
+   * @param typeName
+   *          Name of the typename
+   * @return
+   */
+  public static String extractDataflowName(String typeName) {
+
+    if (!SDMXDataStore.isDataflowName(typeName)
+        && !SDMXDataStore.isDimensionName(typeName)) {
+      return "";
+    }
+
+    String[] parts = typeName.split(SDMXDataStore.SEPARATOR_FEATURETYPE);
+
+    return parts.length == 0 ? "" : parts[0];
+  }
+
+  /**
+   * Returns the dimension name from a type name (returns an empty string if
+   * this is not an SDMX feature type)
+   * 
+   * @param typeName
+   *          Name of the typename
+   * @return
+   */
+  public static String extractDimensionName(String typeName) {
+
+    if (!SDMXDataStore.isDimensionName(typeName)) {
+      return "";
+    }
+
+    String[] parts = typeName.split(SDMXDataStore.SEPARATOR_FEATURETYPE);
+
+    return parts.length < 3 ? "" : parts[2];
+  }
+
   @Override
   protected List<Name> createTypeNames() {
 
@@ -129,15 +222,27 @@ public class SDMXDataStore extends ContentDataStore {
 
     this.dataflowStructures.clear();
     dataflows.forEach((s, d) -> {
+      DataFlowStructure dfs = new DataFlowStructure();
       try {
-        this.dataflowStructures.put(s,
-            this.sdmxClient.getDataFlowStructure(d.getDsdIdentifier(), true));
+        dfs = this.sdmxClient.getDataFlowStructure(d.getDsdIdentifier(), true);
+        this.dataflowStructures.put(s, dfs);
       } catch (SdmxException e) {
         LOGGER.log(Level.SEVERE, "Error getting SDMX DSD", e);
       }
-      Name name = new NameImpl(namespace.toExternalForm(), s);
+
+      // Adds the dataflow typename
+      Name name = new NameImpl(namespace.toExternalForm(),
+          SDMXDataStore.composeDataflowTypeName(s));
       ContentEntry entry = new ContentEntry(this, name);
       this.entries.put(name, entry);
+
+      // Adds the dimension typenames
+      dfs.getDimensions().forEach((Dimension dim) -> {
+        Name dimName = new NameImpl(namespace.toExternalForm(),
+            SDMXDataStore.composeDimensionTypeName(s, dim.getId()));
+        ContentEntry dimEntry = new ContentEntry(this, dimName);
+        this.entries.put(dimName, dimEntry);
+      });
     });
 
     return new ArrayList<Name>(this.entries.keySet());
@@ -147,11 +252,24 @@ public class SDMXDataStore extends ContentDataStore {
   protected ContentFeatureSource createFeatureSource(ContentEntry entry)
       throws IOException {
 
-    SDMXFeatureSource featureSource = this.featureSources.get(entry.getName());
+    ContentFeatureSource featureSource = this.featureSources
+        .get(entry.getName());
     if (featureSource == null) {
       try {
-        featureSource = new SDMXFeatureSource(entry,
-            this.dataflows.get(entry.getName().getLocalPart()), new Query());
+        Dataflow df = this.dataflows.get(
+            SDMXDataStore.extractDataflowName(entry.getName().getLocalPart()));
+
+        // Returns different feature sources depending on the the entry
+        // referring to a datflow or a dimension
+        if (SDMXDataStore.isDataflowName(entry.getName().getLocalPart())) {
+          featureSource = new SDMXDataflowFeatureSource(entry, df, new Query());
+        } else {
+          featureSource = new SDMXDimensionFeatureSource(entry, df,
+              SDMXDataStore.extractDimensionName(
+                  entry.getName().getLocalPart()),
+              new Query());
+        }
+
       } catch (FactoryException e) {
         LOGGER.log(Level.SEVERE, "Cannot create CRS", e);
         throw (new IOException(e));
@@ -171,7 +289,7 @@ public class SDMXDataStore extends ContentDataStore {
   }
 
   public DataFlowStructure getDataFlowStructure(String name) {
-    return this.dataflowStructures.get(name);
+    return this.dataflowStructures.get(SDMXDataStore.extractDataflowName(name));
   }
 
   // TODO: ?

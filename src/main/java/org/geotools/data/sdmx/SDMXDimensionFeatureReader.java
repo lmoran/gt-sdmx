@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -51,29 +52,35 @@ import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
  * @author lmorandini
  *
  */
-public abstract class SDMXFeatureReader
-    implements FeatureReader<SimpleFeatureType, SimpleFeature> {
+public class SDMXDimensionFeatureReader extends SDMXFeatureReader {
 
+  protected String dimName;
   protected SimpleFeatureType featureType;
   protected Logger LOGGER;
   protected GenericSDMXClient client;
-  protected Iterator<PortableTimeSeries> tsIter;
-  protected PortableTimeSeries ts;
-  protected Iterator<String> timeIter;
-  protected Iterator<Double> obsIter;
+  protected Iterator<Entry<String, String>> dimIter;
   protected boolean empty;
   protected int featIndex = 0;
 
-  public SDMXFeatureReader(GenericSDMXClient clientIn,
+  public SDMXDimensionFeatureReader(GenericSDMXClient clientIn,
       SimpleFeatureType featureTypeIn, Dataflow dataflowIn,
-      DataFlowStructure dfStructureIn, Logger logger)
+      DataFlowStructure dfStructureIn, String dimName, Logger logger)
       throws IOException, SdmxException {
 
-    this.featureType = featureTypeIn;
-    this.featIndex = 0;
-    this.LOGGER = logger;
-    this.client = clientIn;
-    this.empty = false;
+    super(clientIn, featureTypeIn, dataflowIn, dfStructureIn, logger);
+
+    logger.log(Level.FINE,
+        "SDMX Server " + clientIn.getEndpoint().toExternalForm()
+            + " is about to be queried to retrieve the codes of dimension: "
+            + dimName);
+
+    try {
+      this.dimIter = dfStructureIn.getDimension(this.dimName).getCodeList()
+          .getCodes().entrySet().iterator();
+    } catch (Exception e) {
+        logger.log(Level.SEVERE, e.getMessage(), e);
+        throw new IOException(e);
+    }
   }
 
   /**
@@ -83,7 +90,7 @@ public abstract class SDMXFeatureReader
   public SimpleFeatureType getFeatureType() {
     if (this.featureType == null) {
       throw new IllegalStateException(
-          "No features were retrieved, shouldn't be calling getFeatureType()");
+          "No dimension codes were retrieved, shouldn't be calling getFeatureType()");
     }
     return this.featureType;
   }
@@ -93,7 +100,7 @@ public abstract class SDMXFeatureReader
    */
   @Override
   public boolean hasNext() {
-    return false;
+    return dimIter.hasNext();
   }
 
   /**
@@ -102,7 +109,19 @@ public abstract class SDMXFeatureReader
    */
   @Override
   public SimpleFeature next() throws NoSuchElementException, IOException {
-    return null;
+
+    if (this.hasNext() == false) {
+      return null;
+    }
+
+    Entry dim= this.dimIter.next();
+    SimpleFeatureBuilder builder = new SimpleFeatureBuilder(this.featureType);
+    builder.set(SDMXDataStore.GEOMETRY_ATTR, null);
+    builder.set(SDMXDataStore.CODE_KEY, dim.getKey().toString());
+    builder.set(SDMXDataStore.VALUE_KEY, dim.getValue().toString());
+
+    return builder.buildFeature(
+        (new FeatureIdImpl(dim.getKey().toString())).toString());
   }
 
   @Override

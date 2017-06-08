@@ -51,8 +51,7 @@ import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
  * @author lmorandini
  *
  */
-public abstract class SDMXFeatureReader
-    implements FeatureReader<SimpleFeatureType, SimpleFeature> {
+public class SDMXDataflowFeatureReader extends SDMXFeatureReader {
 
   protected SimpleFeatureType featureType;
   protected Logger LOGGER;
@@ -64,16 +63,44 @@ public abstract class SDMXFeatureReader
   protected boolean empty;
   protected int featIndex = 0;
 
-  public SDMXFeatureReader(GenericSDMXClient clientIn,
+  protected class DimensionValue {
+
+    public String name;
+    public String value;
+
+    DimensionValue(String s) {
+      this.name = s.split(SDMXDataStore.SEPARATOR_DIM)[0];
+      this.value = s.split(SDMXDataStore.SEPARATOR_DIM)[1];
+    }
+
+    public boolean isMeasure() {
+      return this.name.equals(SDMXDataStore.MEASURE_KEY);
+    }
+  }
+
+  public SDMXDataflowFeatureReader(GenericSDMXClient clientIn,
       SimpleFeatureType featureTypeIn, Dataflow dataflowIn,
-      DataFlowStructure dfStructureIn, Logger logger)
+      DataFlowStructure dfStructureIn, String sdmxConstraints, Logger logger)
       throws IOException, SdmxException {
 
-    this.featureType = featureTypeIn;
-    this.featIndex = 0;
-    this.LOGGER = logger;
-    this.client = clientIn;
-    this.empty = false;
+    super(clientIn, featureTypeIn, dataflowIn, dfStructureIn, logger);
+
+    logger.log(Level.FINE,
+        "SDMX Server " + clientIn.getEndpoint().toExternalForm()
+            + " is about to be queried with: " + sdmxConstraints);
+
+    try {
+      this.tsIter = this.client.getTimeSeries(dataflowIn, dfStructureIn,
+          sdmxConstraints, null, null, false, null, false).iterator();
+    } catch (SdmxException e) {
+      if (e instanceof SdmxResponseException && ((SdmxResponseException) e)
+          .getResponseCode() == SDMXDataStore.ERROR_NORESULTS) {
+        this.empty = true;
+      } else {
+        logger.log(Level.SEVERE, e.getMessage(), e);
+        throw new IOException(e);
+      }
+    }
   }
 
   /**
@@ -93,7 +120,22 @@ public abstract class SDMXFeatureReader
    */
   @Override
   public boolean hasNext() {
-    return false;
+
+    if (this.empty == true) {
+      return false;
+    }
+
+    if (this.ts == null) {
+      this.ts = this.tsIter.next();
+      this.timeIter = this.ts.getTimeSlots().iterator();
+      this.obsIter = this.ts.getObservations().iterator();
+    }
+
+    if (this.timeIter.hasNext() == false && this.tsIter.hasNext() == false) {
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -102,7 +144,37 @@ public abstract class SDMXFeatureReader
    */
   @Override
   public SimpleFeature next() throws NoSuchElementException, IOException {
-    return null;
+
+    if (this.hasNext() == false) {
+      return null;
+    }
+
+    if (this.timeIter.hasNext() == false && this.tsIter.hasNext() == true) {
+      this.ts = this.tsIter.next();
+      this.timeIter = this.ts.getTimeSlots().iterator();
+      this.obsIter = this.ts.getObservations().iterator();
+    }
+
+    if (this.timeIter.hasNext() == false) {
+      return null;
+    }
+
+    SimpleFeatureBuilder builder = new SimpleFeatureBuilder(this.featureType);
+    builder.set(SDMXDataStore.GEOMETRY_ATTR, null);
+    builder.set(SDMXDataStore.TIME_KEY, this.timeIter.next());
+
+    ts.getDimensions().forEach((dimIn) -> {
+      DimensionValue dimValue = new DimensionValue(dimIn);
+
+      if (dimValue.isMeasure()) {
+        builder.set(SDMXDataStore.MEASURE_KEY, this.obsIter.next());
+      } else {
+        builder.set(dimValue.name, dimValue.value);
+      }
+    });
+
+    return builder.buildFeature(
+        (new FeatureIdImpl(String.valueOf(this.ts.hashCode()))).toString());
   }
 
   @Override

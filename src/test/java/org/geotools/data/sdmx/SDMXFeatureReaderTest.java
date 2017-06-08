@@ -58,7 +58,7 @@ public class SDMXFeatureReaderTest {
   private HttpURLConnection clientMock;
 
   SDMXFeatureReader reader;
-  SDMXFeatureSource source;
+  SDMXDataflowFeatureSource source;
   SimpleFeatureType fType;
 
   @Test
@@ -82,7 +82,7 @@ public class SDMXFeatureReaderTest {
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
-    this.source = (SDMXFeatureSource) this.dataStore
+    this.source = (SDMXDataflowFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
     assertEquals("......", this.source.buildConstraints(Query.ALL));
@@ -121,11 +121,14 @@ public class SDMXFeatureReaderTest {
         .thenReturn(
             Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
         .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
+        .thenReturn(
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
         .thenReturn(new ByteArrayInputStream("".getBytes()));
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
-    this.source = (SDMXFeatureSource) this.dataStore
+    this.source = (SDMXDataflowFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
     this.source.buildFeatureType();
@@ -156,7 +159,7 @@ public class SDMXFeatureReaderTest {
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
-    this.source = (SDMXFeatureSource) this.dataStore
+    this.source = (SDMXDataflowFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
     this.source.buildFeatureType();
@@ -219,7 +222,7 @@ public class SDMXFeatureReaderTest {
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
-    this.source = (SDMXFeatureSource) this.dataStore
+    this.source = (SDMXDataflowFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
     this.source.buildFeatureType();
@@ -273,7 +276,7 @@ public class SDMXFeatureReaderTest {
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
-    this.source = (SDMXFeatureSource) this.dataStore
+    this.source = (SDMXDataflowFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
     this.source.buildFeatureType();

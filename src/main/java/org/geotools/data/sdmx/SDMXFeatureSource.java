@@ -67,12 +67,12 @@ import it.bancaditalia.oss.sdmx.exceptions.SdmxException;
 import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
 
 /**
- * Source of features for the ArcGIS ReST API
+ * Generic ource of features for SDMX
  * 
  * @author lmorandini
  *
  */
-public class SDMXFeatureSource extends ContentFeatureSource {
+public abstract class SDMXFeatureSource extends ContentFeatureSource {
 
   // FIXME:
   protected CoordinateReferenceSystem crs;
@@ -82,34 +82,18 @@ public class SDMXFeatureSource extends ContentFeatureSource {
   protected Dataflow dataflow;
   protected DataFlowStructure dataflowStructure;
 
-  protected final class VisitFilter extends DefaultFilterVisitor {
-
-    public Object visit(Or expr, Object data) {
-      Map<String, String> map = (Map<String, String>) data;
-      List<String> ids = new ArrayList<String>();
-      List<String> property = new ArrayList<String>();
-
-      expr.getChildren().forEach(eqExpr -> {
-        property
-            .add(((PropertyIsEqualTo) (eqExpr)).getExpression1().toString());
-        ids.add(((PropertyIsEqualTo) (eqExpr)).getExpression2().toString());
-      });
-
-      map.put(property.get(0),
-          String.join(SDMXDataStore.OR_EXP, ((List<String>) ids)));
-      return map;
-    }
-
-    public Object visit(PropertyIsEqualTo expr, Object data) {
-      Map<String, String> map = (Map<String, String>) data;
-
-      map.put(expr.getExpression1().toString(),
-          expr.getExpression2().toString());
-      return map;
-    }
-
-  }
-
+  /**
+   * Constructor
+   * 
+   * @param entry
+   *          ContentEntry of the feature type
+   * @param dataflowIn
+   *          SDMX Dataflow the query works on
+   * @param query
+   *          Query that defines the feature source
+   * @throws IOException
+   * @throws FactoryException
+   */
   public SDMXFeatureSource(ContentEntry entry, Dataflow dataflowIn, Query query)
       throws IOException, FactoryException {
 
@@ -123,8 +107,7 @@ public class SDMXFeatureSource extends ContentFeatureSource {
 
   }
 
-  @Override
-  protected SimpleFeatureType buildFeatureType() throws IOException {
+  protected SimpleFeatureTypeBuilder buildBuilder() throws IOException {
 
     // Sets the information about the resource
     this.resInfo = new DefaultResourceInfo();
@@ -164,17 +147,8 @@ public class SDMXFeatureSource extends ContentFeatureSource {
 
     builder.add("the_geom", Point.class);
     builder.setDefaultGeometry(SDMXDataStore.GEOMETRY_ATTR);
-    builder.add(SDMXDataStore.TIME_KEY, java.lang.String.class);
-    builder.add(SDMXDataStore.MEASURE_KEY, java.lang.Double.class);
 
-    this.dataflowStructure.getDimensions().forEach(dim -> {
-      if (!SDMXDataStore.MEASURE_KEY.equals(dim.getId().toUpperCase())) {
-        builder.add(dim.getId(), java.lang.String.class);
-      }
-    });
-
-    this.schema = builder.buildFeatureType();
-    return this.schema;
+    return builder;
   }
 
   @Override
@@ -213,58 +187,25 @@ public class SDMXFeatureSource extends ContentFeatureSource {
     return 1;
   }
 
-  @Override
-  protected FeatureReader<SimpleFeatureType, SimpleFeature> getReaderInternal(
-      Query query) throws IOException {
-
-    try {
-      return new SDMXFeatureReader(this.dataStore.getSDMXClient(), this.schema,
-          this.dataflow, this.dataflowStructure, this.buildConstraints(query),
-          this.dataStore.getLogger());
-    } catch (SdmxException e) {
-      // FIXME: re-hash the exception into an IOEXception
-      this.dataStore.getLogger().log(Level.SEVERE, e.getMessage(), e);
-      throw new IOException(e);
-    }
-  }
-
-  /**
-   * Builds the SDMX expression to reflect the GeoTools query give as input
-   * 
-   * @param query
-   *          GeoTools query to transform into SDMX constraints
-   * @return The SDMX expression
-   */
-  public String buildConstraints(Query query) throws SdmxException {
-
-    // Check tha tMEASUREs are not in there, Add "All" for the MEASURE dimension
-    Map<String, String> expressions;
-    ArrayList<String> constraints = new ArrayList<String>(
-        this.dataflowStructure.getDimensions().size());
-
-    // All-in query
-    if (Query.ALL.equals(query)) {
-      this.dataflowStructure.getDimensions().forEach(dim -> {
-        constraints.add(SDMXDataStore.ALLCODES_EXP);
-      });
-      // Builds a non-all-in query
-    } else {
-      expressions = (Map<String, String>) query.getFilter().accept(
-          new SDMXFeatureSource.VisitFilter(), new HashMap<String, String>());
-      this.dataflowStructure.getDimensions().forEach(dim -> {
-        constraints.add((String) expressions.get(dim.getId()));
-      });
-    }
-
-    return String.join(SDMXDataStore.SEPARATOR_EXP, constraints);
-  }
-
   public boolean canTransact() {
     return false;
   }
 
   public boolean canFilter() {
     return true;
+  }
+
+  // Method stub, implemented by subclass
+  @Override
+  protected FeatureReader<SimpleFeatureType, SimpleFeature> getReaderInternal(
+      Query query) throws IOException {
+    return null;
+  }
+
+  // Method stub, implemented by subclass
+  @Override
+  protected SimpleFeatureType buildFeatureType() throws IOException {
+    return null;
   }
 
 }

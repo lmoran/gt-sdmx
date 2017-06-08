@@ -16,8 +16,7 @@
  */
 package org.geotools.data.sdmx;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -56,6 +55,45 @@ public class SDMXDataStoreTest {
   }
 
   @Test
+  public void testTypeNameComposition() throws Exception {
+
+    assertEquals("population__SDMX",
+        SDMXDataStore.composeDataflowTypeName("population"));
+
+    assertEquals("population__SDMX__gender",
+        SDMXDataStore.composeDimensionTypeName("population", "gender"));
+
+    assertEquals(false, SDMXDataStore.isDataflowName("population"));
+    assertEquals(false, SDMXDataStore.isDataflowName("population_SDMX"));
+    assertEquals(true, SDMXDataStore.isDataflowName("population__SDMX"));
+
+    assertEquals(false, SDMXDataStore.isDimensionName("population"));
+    assertEquals(false, SDMXDataStore.isDimensionName(""));
+    assertEquals(false,
+        SDMXDataStore.isDimensionName("population_SDMX__gender"));
+    assertEquals(false, SDMXDataStore.isDimensionName(""));
+    assertEquals(true,
+        SDMXDataStore.isDimensionName("population__SDMX__gender"));
+
+    assertEquals("population",
+        SDMXDataStore.extractDataflowName("population__SDMX__gender"));
+    assertEquals("population",
+        SDMXDataStore.extractDataflowName("population__SDMX"));
+    assertEquals("", SDMXDataStore.extractDataflowName("population"));
+    assertEquals("", SDMXDataStore.extractDataflowName("__SDMX"));
+    assertEquals("", SDMXDataStore.extractDataflowName("_SDMX"));
+    assertEquals("", SDMXDataStore.extractDataflowName("population__SDMX_X"));
+    assertEquals("", SDMXDataStore.extractDataflowName(""));
+
+    assertEquals("gender",
+        SDMXDataStore.extractDimensionName("population__SDMX__gender"));
+    assertEquals("", SDMXDataStore.extractDimensionName(""));
+    assertEquals("", SDMXDataStore.extractDimensionName("population"));
+    assertEquals("", SDMXDataStore.extractDimensionName("population__SDMX"));
+    assertEquals("", SDMXDataStore.extractDimensionName("population__SDMX_X"));
+  }
+
+  @Test
   public void testTypeName() throws Exception {
 
     this.urlMock = PowerMockito.mock(URL.class);
@@ -75,12 +113,15 @@ public class SDMXDataStoreTest {
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     List<Name> names = this.dataStore.createTypeNames();
 
-    assertEquals(2, names.size());
-    assertEquals(Helper.T04, names.get(0).getLocalPart());
-    assertEquals(Helper.NAMESPACE, names.get(0).getNamespaceURI());
+    assertEquals(12, names.size());
+    assertTrue(names.contains(new NameImpl(Helper.NAMESPACE, Helper.T04)));
+    assertTrue(names.contains(new NameImpl(Helper.NAMESPACE, Helper.T04_AGE)));
     assertNotNull(
         this.dataStore.getEntry(new NameImpl(Helper.NAMESPACE, Helper.T04)));
-    assertEquals(Helper.SEIFA_LGA, names.get(1).getLocalPart());
+    assertTrue(
+        names.contains(new NameImpl(Helper.NAMESPACE, Helper.SEIFA_LGA)));
+    assertTrue(names
+        .contains(new NameImpl(Helper.NAMESPACE, Helper.SEIFA_LGA_MEASURE)));
     assertNotNull(this.dataStore
         .getEntry(new NameImpl(Helper.NAMESPACE, Helper.SEIFA_LGA)));
   }
@@ -100,10 +141,13 @@ public class SDMXDataStoreTest {
         .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
         .thenReturn(
             Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"))
+        .thenReturn(
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
         .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"));
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
-    assertEquals(2, this.dataStore.createTypeNames().size());
+    assertEquals(12, this.dataStore.createTypeNames().size());
 
     assertNotNull(this.dataStore.getFeatureSource(Helper.T04).getSchema());
     assertEquals(9, this.dataStore.getFeatureSource(Helper.T04).getSchema()
