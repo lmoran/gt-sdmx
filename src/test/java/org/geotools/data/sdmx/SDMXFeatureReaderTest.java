@@ -58,7 +58,8 @@ public class SDMXFeatureReaderTest {
   private HttpURLConnection clientMock;
 
   SDMXFeatureReader reader;
-  SDMXDataflowFeatureSource source;
+  SDMXDataflowFeatureSource dfSource;
+  SDMXDimensionFeatureSource dimSource;
   SimpleFeatureType fType;
 
   @Test
@@ -82,16 +83,16 @@ public class SDMXFeatureReaderTest {
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
-    this.source = (SDMXDataflowFeatureSource) this.dataStore
+    this.dfSource = (SDMXDataflowFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
-    assertEquals("......", this.source.buildConstraints(Query.ALL));
+    assertEquals("......", this.dfSource.buildConstraints(Query.ALL));
 
     Filter filter = ECQL.toFilter("MEASURE='3' and " + "MSTP='TOT' and "
         + "AGE='TOT' and " + "STATE='0' and " + "REGIONTYPE='AUS' and "
         + "REGION='0' and " + "FREQUENCY='A'");
     assertEquals("3.TOT.TOT.0.AUS.0.A",
-        this.source.buildConstraints(new Query("", filter)));
+        this.dfSource.buildConstraints(new Query("", filter)));
 
     filter = ECQL
         .toFilter("principalMineralResource IN ('silver','oil', 'gold' )");
@@ -100,7 +101,7 @@ public class SDMXFeatureReaderTest {
         + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
         + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'");
     assertEquals("1+2+3.TOT.TOT.1.STE.1+2+3+4.A",
-        this.source.buildConstraints(new Query("", filter)));
+        this.dfSource.buildConstraints(new Query("", filter)));
 
   }
 
@@ -115,6 +116,7 @@ public class SDMXFeatureReaderTest {
         .thenReturn(this.clientMock);
     when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK)
         .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK)
         .thenReturn(HttpStatus.SC_NOT_FOUND);
     when(clientMock.getInputStream())
         .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
@@ -128,11 +130,11 @@ public class SDMXFeatureReaderTest {
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
-    this.source = (SDMXDataflowFeatureSource) this.dataStore
+    this.dfSource = (SDMXDataflowFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
-    this.source.buildFeatureType();
-    this.reader = (SDMXFeatureReader) this.source.getReader(Query.ALL);
+    this.dfSource.buildFeatureType();
+    this.reader = (SDMXFeatureReader) this.dfSource.getReader(Query.ALL);
 
     assertFalse(this.reader.hasNext());
     assertNull(this.reader.next());
@@ -159,15 +161,15 @@ public class SDMXFeatureReaderTest {
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
-    this.source = (SDMXDataflowFeatureSource) this.dataStore
+    this.dfSource = (SDMXDataflowFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
-    this.source.buildFeatureType();
+    this.dfSource.buildFeatureType();
     Query query = new Query();
     query.setFilter(ECQL.toFilter("MEASURE = 1 and MSTP='TOT' and "
         + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
         + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'"));
-    this.reader = (SDMXFeatureReader) this.source.getReader(query);
+    this.reader = (SDMXFeatureReader) this.dfSource.getReader(query);
 
     assertTrue(this.reader.hasNext());
     SimpleFeature feat;
@@ -222,15 +224,15 @@ public class SDMXFeatureReaderTest {
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
-    this.source = (SDMXDataflowFeatureSource) this.dataStore
+    this.dfSource = (SDMXDataflowFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
-    this.source.buildFeatureType();
+    this.dfSource.buildFeatureType();
     Query query = new Query();
     query.setFilter(ECQL.toFilter("MEASURE = 2 and MSTP='TOT' and "
         + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
         + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'"));
-    this.reader = (SDMXFeatureReader) this.source.getReader(query);
+    this.reader = (SDMXFeatureReader) this.dfSource.getReader(query);
 
     assertTrue(this.reader.hasNext());
     SimpleFeature feat;
@@ -276,15 +278,16 @@ public class SDMXFeatureReaderTest {
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
     this.fType = this.dataStore.getFeatureSource(Helper.T04).getSchema();
-    this.source = (SDMXDataflowFeatureSource) this.dataStore
+    this.dfSource = (SDMXDataflowFeatureSource) this.dataStore
         .getFeatureSource(Helper.T04);
 
-    this.source.buildFeatureType();
+    this.dfSource.buildFeatureType();
     Query query = new Query();
-    query.setFilter(ECQL.toFilter("MEASURE in ('3','2', '1') and MSTP='TOT' and "
-        + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
-        + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'"));
-    this.reader = (SDMXFeatureReader) this.source.getReader(query);
+    query
+        .setFilter(ECQL.toFilter("MEASURE in ('3','2', '1') and MSTP='TOT' and "
+            + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
+            + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'"));
+    this.reader = (SDMXFeatureReader) this.dfSource.getReader(query);
 
     assertTrue(this.reader.hasNext());
     SimpleFeature feat;
@@ -296,7 +299,7 @@ public class SDMXFeatureReaderTest {
         assertNotNull(feat.getID());
         assertNull(feat.getDefaultGeometry());
         assertEquals("2001", feat.getAttribute(1));
-        // Only the first measure is returned 
+        // Only the first measure is returned
         assertEquals(2468518.0, feat.getAttribute(2));
         assertEquals("TOT", feat.getAttribute(3));
         assertEquals("TOT", feat.getAttribute(4));
@@ -318,4 +321,58 @@ public class SDMXFeatureReaderTest {
 
     assertEquals(9, nObs);
   }
+  
+  @Test
+  public void readFeaturesDimensionAge() throws Exception {
+
+    this.urlMock = PowerMockito.mock(URL.class);
+    this.clientMock = PowerMockito.mock(HttpURLConnection.class);
+
+    PowerMockito.whenNew(URL.class).withAnyArguments().thenReturn(this.urlMock);
+    PowerMockito.when(this.urlMock.openConnection())
+        .thenReturn(this.clientMock);
+    when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK);
+    when(clientMock.getInputStream())
+        .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
+        .thenReturn(
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"));
+
+    this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
+    this.fType = this.dataStore.getFeatureSource(Helper.T04_AGE).getSchema();
+    this.dimSource = (SDMXDimensionFeatureSource) this.dataStore
+        .getFeatureSource(Helper.T04_AGE);
+
+    this.dimSource.buildFeatureType();
+    this.reader = (SDMXFeatureReader) this.dimSource.getReader(Query.ALL);
+
+    assertTrue(this.reader.hasNext());
+    SimpleFeature feat;
+    int nObs = 0;
+    while (this.reader.hasNext()) {
+      feat = this.reader.next();
+      assertNotNull(feat);
+      if (nObs == 0) {
+        assertNotNull(feat.getID());
+        assertNull(feat.getDefaultGeometry());
+        assertEquals("A65", feat.getAttribute(SDMXDataStore.CODE_KEY));
+        // Only the first measure is returned
+        assertEquals("65 - 69", feat.getAttribute(SDMXDataStore.VALUE_KEY));
+      }
+      String s = feat.getID() + "|"
+          + feat.getType().getGeometryDescriptor().getLocalName() + ":"
+          + feat.getDefaultGeometry();
+      for (int i = 1; i < feat.getAttributeCount(); i++) {
+        s += "|" + feat.getType().getDescriptor(i).getLocalName() + ":"
+            + feat.getAttribute(i);
+      }
+      System.out.println(s);
+      nObs++;
+    }
+
+    assertEquals(17, nObs);
+  }
+
 }

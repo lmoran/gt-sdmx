@@ -104,7 +104,7 @@ public class SDMXDimensionFeatureSource extends SDMXFeatureSource {
     // Builds the feature type
     SimpleFeatureTypeBuilder builder = this.buildBuilder();
     builder.add(SDMXDataStore.CODE_KEY, java.lang.String.class);
-    builder.add(SDMXDataStore.VALUE_KEY, java.lang.Double.class);
+    builder.add(SDMXDataStore.VALUE_KEY, java.lang.String.class);
     this.schema = builder.buildFeatureType();
     return this.schema;
   }

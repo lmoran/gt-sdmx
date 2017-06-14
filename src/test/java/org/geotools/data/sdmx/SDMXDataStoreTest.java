@@ -136,6 +136,7 @@ public class SDMXDataStoreTest {
     PowerMockito.when(this.urlMock.openConnection())
         .thenReturn(this.clientMock);
     when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK)
         .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK);
     when(clientMock.getInputStream())
         .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))

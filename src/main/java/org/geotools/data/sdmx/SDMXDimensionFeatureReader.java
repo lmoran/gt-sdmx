@@ -55,20 +55,16 @@ import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
 public class SDMXDimensionFeatureReader extends SDMXFeatureReader {
 
   protected String dimName;
-  protected SimpleFeatureType featureType;
-  protected Logger LOGGER;
-  protected GenericSDMXClient client;
   protected Iterator<Entry<String, String>> dimIter;
-  protected boolean empty;
-  protected int featIndex = 0;
 
   public SDMXDimensionFeatureReader(GenericSDMXClient clientIn,
       SimpleFeatureType featureTypeIn, Dataflow dataflowIn,
-      DataFlowStructure dfStructureIn, String dimName, Logger logger)
+      DataFlowStructure dfStructureIn, String dimNameIn, Logger logger)
       throws IOException, SdmxException {
 
     super(clientIn, featureTypeIn, dataflowIn, dfStructureIn, logger);
-
+    this.dimName= dimNameIn;
+    
     logger.log(Level.FINE,
         "SDMX Server " + clientIn.getEndpoint().toExternalForm()
             + " is about to be queried to retrieve the codes of dimension: "

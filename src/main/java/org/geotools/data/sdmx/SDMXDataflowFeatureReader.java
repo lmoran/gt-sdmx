@@ -53,16 +53,6 @@ import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
  */
 public class SDMXDataflowFeatureReader extends SDMXFeatureReader {
 
-  protected SimpleFeatureType featureType;
-  protected Logger LOGGER;
-  protected GenericSDMXClient client;
-  protected Iterator<PortableTimeSeries> tsIter;
-  protected PortableTimeSeries ts;
-  protected Iterator<String> timeIter;
-  protected Iterator<Double> obsIter;
-  protected boolean empty;
-  protected int featIndex = 0;
-
   protected class DimensionValue {
 
     public String name;
@@ -121,7 +111,9 @@ public class SDMXDataflowFeatureReader extends SDMXFeatureReader {
   @Override
   public boolean hasNext() {
 
-    if (this.empty == true) {
+    if (this.empty == true || (this.ts == null && this.tsIter.hasNext() == false)
+        || (this.ts != null && this.timeIter.hasNext() == false
+            && this.tsIter.hasNext() == false)) {
       return false;
     }
 
