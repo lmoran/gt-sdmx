@@ -19,11 +19,8 @@
 package org.geotools.data.sdmx;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
@@ -32,19 +29,15 @@ import java.util.logging.Logger;
 
 import org.geotools.data.FeatureReader;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
-import org.geotools.feature.simple.SimpleFeatureImpl;
 import org.geotools.filter.identity.FeatureIdImpl;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 
 import it.bancaditalia.oss.sdmx.api.DataFlowStructure;
 import it.bancaditalia.oss.sdmx.api.Dataflow;
+import it.bancaditalia.oss.sdmx.api.Dimension;
 import it.bancaditalia.oss.sdmx.api.GenericSDMXClient;
-import it.bancaditalia.oss.sdmx.api.PortableDataSet;
-import it.bancaditalia.oss.sdmx.api.PortableTimeSeries;
-import it.bancaditalia.oss.sdmx.client.SdmxClientHandler;
 import it.bancaditalia.oss.sdmx.exceptions.SdmxException;
-import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
 
 /**
  * Feature reader of SDMX tuples
@@ -54,28 +47,33 @@ import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
  */
 public class SDMXDimensionFeatureReader extends SDMXFeatureReader {
 
-  protected String dimName;
   protected Iterator<Entry<String, String>> dimIter;
 
   public SDMXDimensionFeatureReader(GenericSDMXClient clientIn,
       SimpleFeatureType featureTypeIn, Dataflow dataflowIn,
-      DataFlowStructure dfStructureIn, String dimNameIn, Logger logger)
+      DataFlowStructure dfStructureIn, String expression, Logger logger)
       throws IOException, SdmxException {
 
     super(clientIn, featureTypeIn, dataflowIn, dfStructureIn, logger);
-    this.dimName= dimNameIn;
-    
-    logger.log(Level.FINE,
-        "SDMX Server " + clientIn.getEndpoint().toExternalForm()
-            + " is about to be queried to retrieve the codes of dimension: "
-            + dimName);
 
     try {
-      this.dimIter = dfStructureIn.getDimension(this.dimName).getCodeList()
-          .getCodes().entrySet().iterator();
+      // If the list of dimensions has to be returned, returns aonly those
+      if (SDMXDataStore.DIMENSIONS_EXPR_ALL.equals(expression.toUpperCase())) {
+        Iterator<Dimension> iter = dfStructureIn.getDimensions().iterator();
+        Map<String, String> dimensions = new HashMap<String, String>();
+        iter.forEachRemaining(dim -> {
+          dimensions.put(dim.getId(), dim.getName());
+        });
+        this.dimIter = dimensions.entrySet().iterator();
+        // If all the codes of the fiven dimension has to be returned
+      } else {
+        this.dimIter = dfStructureIn.getDimension(expression.toUpperCase())
+            .getCodeList().getCodes().entrySet().iterator();
+
+      }
     } catch (Exception e) {
-        logger.log(Level.SEVERE, e.getMessage(), e);
-        throw new IOException(e);
+      logger.log(Level.SEVERE, e.getMessage(), e);
+      throw new IOException(e);
     }
   }
 
@@ -110,14 +108,14 @@ public class SDMXDimensionFeatureReader extends SDMXFeatureReader {
       return null;
     }
 
-    Entry dim= this.dimIter.next();
+    Entry dim = this.dimIter.next();
     SimpleFeatureBuilder builder = new SimpleFeatureBuilder(this.featureType);
     builder.set(SDMXDataStore.GEOMETRY_ATTR, null);
     builder.set(SDMXDataStore.CODE_KEY, dim.getKey().toString());
-    builder.set(SDMXDataStore.VALUE_KEY, dim.getValue().toString());
+    builder.set(SDMXDataStore.DESCRIPTION_KEY, dim.getValue().toString());
 
-    return builder.buildFeature(
-        (new FeatureIdImpl(dim.getKey().toString())).toString());
+    return builder
+        .buildFeature((new FeatureIdImpl(dim.getKey().toString())).toString());
   }
 
   @Override

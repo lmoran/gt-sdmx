@@ -21,9 +21,9 @@ public class Helper {
   public static String PASSWORD = "testpassword";
 
   public static String T04 = "ABS_CENSUS2011_T04__SDMX";
-  public static String T04_AGE = "ABS_CENSUS2011_T04__SDMX__AGE";
+  public static String T04_DIMENSIONS = "ABS_CENSUS2011_T04__SDMX__DIMENSIONS";
   public static String SEIFA_LGA = "ABS_SEIFA_LGA__SDMX";
-  public static String SEIFA_LGA_MEASURE = "ABS_SEIFA_LGA__SDMX__MEASURE";
+  public static String SEIFA_LGA_DIMENSIONS = "ABS_SEIFA_LGA__SDMX__DIMENSIONS";
 
 
   public Helper() {

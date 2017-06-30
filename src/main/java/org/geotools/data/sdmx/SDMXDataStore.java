@@ -36,7 +36,6 @@ import org.opengis.referencing.FactoryException;
 
 import it.bancaditalia.oss.sdmx.api.DataFlowStructure;
 import it.bancaditalia.oss.sdmx.api.Dataflow;
-import it.bancaditalia.oss.sdmx.api.Dimension;
 import it.bancaditalia.oss.sdmx.client.SDMXClientFactory;
 import it.bancaditalia.oss.sdmx.api.GenericSDMXClient;
 import it.bancaditalia.oss.sdmx.exceptions.SdmxException;
@@ -56,14 +55,17 @@ public class SDMXDataStore extends ContentDataStore {
   public static String REGION_KEY = "REGION";
   public static String TIME_KEY = "TIME";
   public static String CODE_KEY = "CODE";
-  public static String VALUE_KEY = "VALUE";
+  public static String DESCRIPTION_KEY = "DESCRIPTION";
   public static String ALLCODES_EXP = "";
   public static String OR_EXP = "+";
   public static String SEPARATOR_EXP = ".";
   public static String SEPARATOR_DIM = "=";
   public static String GEOMETRY_ATTR = "the_geom";
   public static String SEPARATOR_FEATURETYPE = "__";
+  public static String DIMENSIONS_SUFFIX = "DIMENSIONS";
   public static String FEATURETYPE_SUFFIX = "SDMX";
+  public static String DIMENSIONS_EXPR = "DIMENSION";
+  public static String DIMENSIONS_EXPR_ALL = "ALL";
 
   // SDMX error codes
   public static int ERROR_NORESULTS = 100;
@@ -135,9 +137,10 @@ public class SDMXDataStore extends ContentDataStore {
    *          Name of the dataflow
    * @return
    */
-  public static String composeDimensionTypeName(String dfName, String dimName) {
-    return dfName + SDMXDataStore.SEPARATOR_FEATURETYPE + FEATURETYPE_SUFFIX
-        + SDMXDataStore.SEPARATOR_FEATURETYPE + dimName;
+  public static String composeDimensionTypeName(String dfName) {
+    return dfName + SDMXDataStore.SEPARATOR_FEATURETYPE
+        + SDMXDataStore.FEATURETYPE_SUFFIX + SDMXDataStore.SEPARATOR_FEATURETYPE
+        + SDMXDataStore.DIMENSIONS_SUFFIX;
   }
 
   /**
@@ -162,7 +165,7 @@ public class SDMXDataStore extends ContentDataStore {
   public static boolean isDimensionName(String typeName) {
     return typeName.matches("(.+)" + SDMXDataStore.SEPARATOR_FEATURETYPE
         + SDMXDataStore.FEATURETYPE_SUFFIX + SDMXDataStore.SEPARATOR_FEATURETYPE
-        + "(.+)$");
+        + SDMXDataStore.DIMENSIONS_SUFFIX + "$");
   }
 
   /**
@@ -183,25 +186,6 @@ public class SDMXDataStore extends ContentDataStore {
     String[] parts = typeName.split(SDMXDataStore.SEPARATOR_FEATURETYPE);
 
     return parts.length == 0 ? "" : parts[0];
-  }
-
-  /**
-   * Returns the dimension name from a type name (returns an empty string if
-   * this is not an SDMX feature type)
-   * 
-   * @param typeName
-   *          Name of the typename
-   * @return
-   */
-  public static String extractDimensionName(String typeName) {
-
-    if (!SDMXDataStore.isDimensionName(typeName)) {
-      return "";
-    }
-
-    String[] parts = typeName.split(SDMXDataStore.SEPARATOR_FEATURETYPE);
-
-    return parts.length < 3 ? "" : parts[2];
   }
 
   @Override
@@ -236,13 +220,12 @@ public class SDMXDataStore extends ContentDataStore {
       ContentEntry entry = new ContentEntry(this, name);
       this.entries.put(name, entry);
 
-      // Adds the dimension typenames
-      dfs.getDimensions().forEach((Dimension dim) -> {
-        Name dimName = new NameImpl(namespace.toExternalForm(),
-            SDMXDataStore.composeDimensionTypeName(s, dim.getId()));
-        ContentEntry dimEntry = new ContentEntry(this, dimName);
-        this.entries.put(dimName, dimEntry);
-      });
+      // Adds the dimension typename
+      String dimName = SDMXDataStore.composeDimensionTypeName(s);
+      ContentEntry dimEntry = new ContentEntry(this,
+          new NameImpl(namespace.toExternalForm(), dimName));
+      this.entries.put(new NameImpl(namespace.toExternalForm(), dimName),
+          dimEntry);
     });
 
     return new ArrayList<Name>(this.entries.keySet());
@@ -265,8 +248,6 @@ public class SDMXDataStore extends ContentDataStore {
           featureSource = new SDMXDataflowFeatureSource(entry, df, new Query());
         } else {
           featureSource = new SDMXDimensionFeatureSource(entry, df,
-              SDMXDataStore.extractDimensionName(
-                  entry.getName().getLocalPart()),
               new Query());
         }
 

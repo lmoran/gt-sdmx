@@ -19,52 +19,25 @@
 package org.geotools.data.sdmx;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
-import org.geotools.data.DefaultResourceInfo;
 import org.geotools.data.FeatureReader;
 import org.geotools.data.Query;
-import org.geotools.data.ResourceInfo;
-import org.geotools.data.store.ContentDataStore;
 import org.geotools.data.store.ContentEntry;
-import org.geotools.data.store.ContentFeatureSource;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
-import org.geotools.filter.IsEqualsToImpl;
-import org.geotools.filter.text.cql2.CQL;
 import org.geotools.filter.visitor.DefaultFilterVisitor;
-import org.geotools.geometry.jts.ReferencedEnvelope;
-import org.geotools.referencing.CRS;
-import org.geotools.util.SimpleInternationalString;
 
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.feature.type.Name;
-import org.opengis.filter.And;
-import org.opengis.filter.Id;
-import org.opengis.filter.Or;
-import org.opengis.filter.BinaryComparisonOperator;
-import org.opengis.filter.BinaryLogicOperator;
-import org.opengis.filter.FilterVisitor;
 import org.opengis.filter.PropertyIsEqualTo;
-import org.opengis.filter.expression.PropertyName;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
-import com.vividsolutions.jts.geom.Point;
-
-import it.bancaditalia.oss.sdmx.api.DataFlowStructure;
 import it.bancaditalia.oss.sdmx.api.Dataflow;
-import it.bancaditalia.oss.sdmx.api.PortableDataSet;
 import it.bancaditalia.oss.sdmx.exceptions.SdmxException;
-import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
+import org.geotools.filter.IllegalFilterException;
 
 /**
  * Source of features for SDMX Dimensions
@@ -74,10 +47,41 @@ import it.bancaditalia.oss.sdmx.exceptions.SdmxResponseException;
  */
 public class SDMXDimensionFeatureSource extends SDMXFeatureSource {
 
-  // FIXME:
   protected CoordinateReferenceSystem crs;
 
-  protected String dimName;
+  /**
+   * Inner class used to build the SDMX query expression
+   * 
+   * @author lmorandini
+   *
+   */
+  protected final class VisitFilter extends DefaultFilterVisitor {
+
+    public Object visit(PropertyIsEqualTo expr, Object data) {
+      Map<String, String> map = (Map<String, String>) data;
+
+      if (SDMXDataStore.DIMENSIONS_EXPR
+          .equals(expr.getExpression1().toString().toUpperCase())
+          && SDMXDataStore.DIMENSIONS_EXPR_ALL
+              .equals(expr.getExpression2().toString().toUpperCase())) {
+        map.put(SDMXDataStore.DIMENSIONS_EXPR,
+            SDMXDataStore.DIMENSIONS_EXPR_ALL);
+        return map;
+      }
+
+      if (SDMXDataStore.DIMENSIONS_EXPR
+          .equals(expr.getExpression1().toString().toUpperCase())
+          && !SDMXDataStore.DIMENSIONS_EXPR_ALL
+              .equals(expr.getExpression2().toString().toUpperCase())) {
+        map.put(SDMXDataStore.DIMENSIONS_EXPR,
+            expr.getExpression2().toString().toUpperCase());
+        return map;
+      }
+
+      throw new IllegalFilterException(
+          "Illegal filter for querying an SDMX dimension or list of dimensions");
+    }
+  }
 
   /**
    * Constructor
@@ -92,10 +96,9 @@ public class SDMXDimensionFeatureSource extends SDMXFeatureSource {
    * @throws FactoryException
    */
   public SDMXDimensionFeatureSource(ContentEntry entry, Dataflow dataflowIn,
-      String dimNameIn, Query query) throws IOException, FactoryException {
+      Query query) throws IOException, FactoryException {
 
     super(entry, dataflowIn, query);
-    this.dimName = dimNameIn;
   }
 
   @Override
@@ -104,7 +107,7 @@ public class SDMXDimensionFeatureSource extends SDMXFeatureSource {
     // Builds the feature type
     SimpleFeatureTypeBuilder builder = this.buildBuilder();
     builder.add(SDMXDataStore.CODE_KEY, java.lang.String.class);
-    builder.add(SDMXDataStore.VALUE_KEY, java.lang.String.class);
+    builder.add(SDMXDataStore.DESCRIPTION_KEY, java.lang.String.class);
     this.schema = builder.buildFeatureType();
     return this.schema;
   }
@@ -114,17 +117,24 @@ public class SDMXDimensionFeatureSource extends SDMXFeatureSource {
       Query query) throws IOException {
 
     if (this.schema == null) {
-      this.buildFeatureType();  
+      this.buildFeatureType();
     }
+
+    Map<String, String> expressions = (Map<String, String>) query.getFilter()
+        .accept(new SDMXDimensionFeatureSource.VisitFilter(),
+            new HashMap<String, String>());
 
     try {
       return new SDMXDimensionFeatureReader(this.dataStore.getSDMXClient(),
-          this.schema, this.dataflow, this.dataflowStructure, this.dimName,
+          this.schema, this.dataflow, this.dataflowStructure,
+          expressions.get(SDMXDataStore.DIMENSIONS_EXPR),
           this.dataStore.getLogger());
     } catch (SdmxException e) {
       // FIXME: re-hash the exception into an IOEXception
       this.dataStore.getLogger().log(Level.SEVERE, e.getMessage(), e);
       throw new IOException(e);
     }
+
   }
+
 }

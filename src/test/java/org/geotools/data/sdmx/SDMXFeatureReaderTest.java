@@ -20,7 +20,6 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.logging.Logger;
@@ -28,18 +27,13 @@ import java.util.logging.Logger;
 import org.apache.commons.httpclient.HttpStatus;
 import org.geotools.data.Query;
 import org.geotools.data.sdmx.SDMXFeatureReader;
-import org.geotools.factory.CommonFactoryFinder;
 import org.geotools.util.logging.Logging;
-import org.geotools.filter.text.cql2.CQL;
 import org.geotools.filter.text.ecql.ECQL;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.filter.Filter;
-import org.opengis.filter.FilterFactory;
-import org.opengis.filter.expression.Expression;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -323,6 +317,61 @@ public class SDMXFeatureReaderTest {
   }
   
   @Test
+  public void readFeaturesAllDimensions() throws Exception {
+
+    this.urlMock = PowerMockito.mock(URL.class);
+    this.clientMock = PowerMockito.mock(HttpURLConnection.class);
+
+    PowerMockito.whenNew(URL.class).withAnyArguments().thenReturn(this.urlMock);
+    PowerMockito.when(this.urlMock.openConnection())
+        .thenReturn(this.clientMock);
+    when(clientMock.getResponseCode()).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK).thenReturn(HttpStatus.SC_OK)
+        .thenReturn(HttpStatus.SC_OK);
+    when(clientMock.getInputStream())
+        .thenReturn(Helper.readXMLAsStream("test-data/abs.xml"))
+        .thenReturn(
+            Helper.readXMLAsStream("test-data/abs-census2011-t04-abs.xml"))
+        .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"));
+
+    this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
+    this.fType = this.dataStore.getFeatureSource(Helper.T04_DIMENSIONS).getSchema();
+    this.dimSource = (SDMXDimensionFeatureSource) this.dataStore
+        .getFeatureSource(Helper.T04_DIMENSIONS);
+
+    this.dimSource.buildFeatureType();
+    Query query = new Query();
+    query
+        .setFilter(ECQL.toFilter("dimension = 'all'"));
+    this.reader = (SDMXFeatureReader) this.dimSource.getReader(query);
+
+    assertTrue(this.reader.hasNext());
+    SimpleFeature feat;
+    int nObs = 0;
+    while (this.reader.hasNext()) {
+      feat = this.reader.next();
+      assertNotNull(feat);
+      if (nObs == 0) {
+        assertNotNull(feat.getID());
+        assertNull(feat.getDefaultGeometry());
+        assertEquals("MSTP", feat.getAttribute(SDMXDataStore.CODE_KEY));
+        assertEquals("Registered Marital Status", feat.getAttribute(SDMXDataStore.DESCRIPTION_KEY));
+      }
+      String s = feat.getID() + "|"
+          + feat.getType().getGeometryDescriptor().getLocalName() + ":"
+          + feat.getDefaultGeometry();
+      for (int i = 1; i < feat.getAttributeCount(); i++) {
+        s += "|" + feat.getType().getDescriptor(i).getLocalName() + ":"
+            + feat.getAttribute(i);
+      }
+      System.out.println(s);
+      nObs++;
+    }
+
+    assertEquals(7, nObs);
+  }
+
+  @Test
   public void readFeaturesDimensionAge() throws Exception {
 
     this.urlMock = PowerMockito.mock(URL.class);
@@ -341,12 +390,15 @@ public class SDMXFeatureReaderTest {
         .thenReturn(Helper.readXMLAsStream("test-data/abs-seifa-lga.xml"));
 
     this.dataStore = (SDMXDataStore) Helper.createDefaultSDMXTestDataStore();
-    this.fType = this.dataStore.getFeatureSource(Helper.T04_AGE).getSchema();
+    this.fType = this.dataStore.getFeatureSource(Helper.T04_DIMENSIONS).getSchema();
     this.dimSource = (SDMXDimensionFeatureSource) this.dataStore
-        .getFeatureSource(Helper.T04_AGE);
+        .getFeatureSource(Helper.T04_DIMENSIONS);
 
     this.dimSource.buildFeatureType();
-    this.reader = (SDMXFeatureReader) this.dimSource.getReader(Query.ALL);
+    Query query = new Query();
+    query
+        .setFilter(ECQL.toFilter("dimension = 'age'"));
+    this.reader = (SDMXFeatureReader) this.dimSource.getReader(query);
 
     assertTrue(this.reader.hasNext());
     SimpleFeature feat;
@@ -359,7 +411,7 @@ public class SDMXFeatureReaderTest {
         assertNull(feat.getDefaultGeometry());
         assertEquals("A65", feat.getAttribute(SDMXDataStore.CODE_KEY));
         // Only the first measure is returned
-        assertEquals("65 - 69", feat.getAttribute(SDMXDataStore.VALUE_KEY));
+        assertEquals("65 - 69", feat.getAttribute(SDMXDataStore.DESCRIPTION_KEY));
       }
       String s = feat.getID() + "|"
           + feat.getType().getGeometryDescriptor().getLocalName() + ":"
