@@ -88,9 +88,13 @@ public class SDMXDataflowFeatureSource extends SDMXFeatureSource {
 
   /**
    * Constructor
-   * @param entry ContentEntry of the feature type
-   * @param dataflowIn SDMX Dataflow the query works on
-   * @param query Query that defines the feature source
+   * 
+   * @param entry
+   *          ContentEntry of the feature type
+   * @param dataflowIn
+   *          SDMX Dataflow the query works on
+   * @param query
+   *          Query that defines the feature source
    * @throws IOException
    * @throws FactoryException
    */
@@ -123,13 +127,13 @@ public class SDMXDataflowFeatureSource extends SDMXFeatureSource {
       Query query) throws IOException {
 
     if (this.schema == null) {
-      this.buildFeatureType();  
+      this.buildFeatureType();
     }
 
     try {
-      return new SDMXDataflowFeatureReader(this.dataStore.getSDMXClient(), this.schema,
-          this.dataflow, this.dataflowStructure, this.buildConstraints(query),
-          this.dataStore.getLogger());
+      return new SDMXDataflowFeatureReader(this.dataStore.getSDMXClient(),
+          this.schema, this.dataflow, this.dataflowStructure,
+          this.buildConstraints(query), this.dataStore.getLogger());
     } catch (SdmxException e) {
       // FIXME: re-hash the exception into an IOEXception
       this.dataStore.getLogger().log(Level.SEVERE, e.getMessage(), e);
@@ -162,7 +166,9 @@ public class SDMXDataflowFeatureSource extends SDMXFeatureSource {
           new SDMXDataflowFeatureSource.VisitFilter(),
           new HashMap<String, String>());
       this.dataflowStructure.getDimensions().forEach(dim -> {
-        constraints.add((String) expressions.get(dim.getId()));
+        constraints.add(
+            expressions.get(dim.getId()) == null ? SDMXDataStore.ALLCODES_EXP
+                : (String) expressions.get(dim.getId()));
       });
     }
 

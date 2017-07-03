@@ -88,15 +88,16 @@ public class SDMXFeatureReaderTest {
     assertEquals("3.TOT.TOT.0.AUS.0.A",
         this.dfSource.buildConstraints(new Query("", filter)));
 
-    filter = ECQL
-        .toFilter("principalMineralResource IN ('silver','oil', 'gold' )");
-
     filter = ECQL.toFilter("MEASURE in ('1', '2', '3') and MSTP='TOT' and "
         + "AGE='TOT' and " + "STATE='1' and " + "REGIONTYPE='STE' and "
         + "REGION in ('1','2','3','4') and " + "FREQUENCY='A'");
     assertEquals("1+2+3.TOT.TOT.1.STE.1+2+3+4.A",
         this.dfSource.buildConstraints(new Query("", filter)));
 
+    filter = ECQL.toFilter("MEASURE in ('1', '2', '3') and MSTP='TOT' and "
+        + "AGE='TOT' and " + "STATE='1'");
+    assertEquals("1+2+3.TOT.TOT.1...",
+        this.dfSource.buildConstraints(new Query("", filter)));
   }
 
   @Test
@@ -342,7 +343,7 @@ public class SDMXFeatureReaderTest {
     this.dimSource.buildFeatureType();
     Query query = new Query();
     query
-        .setFilter(ECQL.toFilter("dimension = 'all'"));
+        .setFilter(ECQL.toFilter("coDE = 'aLL'"));
     this.reader = (SDMXFeatureReader) this.dimSource.getReader(query);
 
     assertTrue(this.reader.hasNext());
@@ -397,7 +398,7 @@ public class SDMXFeatureReaderTest {
     this.dimSource.buildFeatureType();
     Query query = new Query();
     query
-        .setFilter(ECQL.toFilter("dimension = 'age'"));
+        .setFilter(ECQL.toFilter("cOdE = 'AgE'"));
     this.reader = (SDMXFeatureReader) this.dimSource.getReader(query);
 
     assertTrue(this.reader.hasNext());

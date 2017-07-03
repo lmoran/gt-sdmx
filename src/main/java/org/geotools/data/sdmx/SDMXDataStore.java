@@ -64,7 +64,7 @@ public class SDMXDataStore extends ContentDataStore {
   public static String SEPARATOR_FEATURETYPE = "__";
   public static String DIMENSIONS_SUFFIX = "DIMENSIONS";
   public static String FEATURETYPE_SUFFIX = "SDMX";
-  public static String DIMENSIONS_EXPR = "DIMENSION";
+  public static String DIMENSIONS_EXPR = "CODE";
   public static String DIMENSIONS_EXPR_ALL = "ALL";
 
   // SDMX error codes

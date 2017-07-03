@@ -60,19 +60,18 @@ public class SDMXDimensionFeatureSource extends SDMXFeatureSource {
     public Object visit(PropertyIsEqualTo expr, Object data) {
       Map<String, String> map = (Map<String, String>) data;
 
-      if (SDMXDataStore.DIMENSIONS_EXPR
-          .equals(expr.getExpression1().toString().toUpperCase())
+      if (SDMXDataStore.DIMENSIONS_EXPR.equalsIgnoreCase(expr.getExpression1().toString())
           && SDMXDataStore.DIMENSIONS_EXPR_ALL
-              .equals(expr.getExpression2().toString().toUpperCase())) {
+              .equalsIgnoreCase(expr.getExpression2().toString())) {
         map.put(SDMXDataStore.DIMENSIONS_EXPR,
             SDMXDataStore.DIMENSIONS_EXPR_ALL);
         return map;
       }
 
       if (SDMXDataStore.DIMENSIONS_EXPR
-          .equals(expr.getExpression1().toString().toUpperCase())
+          .equalsIgnoreCase(expr.getExpression1().toString())
           && !SDMXDataStore.DIMENSIONS_EXPR_ALL
-              .equals(expr.getExpression2().toString().toUpperCase())) {
+              .equalsIgnoreCase(expr.getExpression2().toString())) {
         map.put(SDMXDataStore.DIMENSIONS_EXPR,
             expr.getExpression2().toString().toUpperCase());
         return map;
